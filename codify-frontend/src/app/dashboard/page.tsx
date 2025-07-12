@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +27,6 @@ import {
   CheckCircle,
   XCircle,
   Bell,
-  Send,
   MessageSquare
 } from "lucide-react";
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -149,6 +148,20 @@ console.log("Ready to start coding!");`);
   });
   const [assignmentLoading, setAssignmentLoading] = useState(false);
 
+  // Leaderboard state
+  const [leaderboardData, setLeaderboardData] = useState<Array<{
+    classroomId: string;
+    classroomName: string;
+    leaderboard: Array<{
+      userId: string;
+      userName: string;
+      totalPoints: number;
+      completedAssignments: number;
+      averageScore: number;
+    }>;
+  }>>([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+
   // Notification state
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notificationsPanelOpen, setNotificationsPanelOpen] = useState(false);
@@ -180,17 +193,6 @@ console.log(greet("Developer"));
 console.log("Ready to start coding!");`);
     }
   }, [language, code]);
-
-  useEffect(() => {
-    if (status === "loading") return;
-    if (!session) {
-      router.push("/login");
-      return;
-    }
-    fetchClassrooms();
-    fetchAssignments();
-    fetchNotifications();
-  }, [session, status, router]);
 
   const fetchClassrooms = async () => {
     try {
@@ -230,6 +232,33 @@ console.log("Ready to start coding!");`);
       console.error("Failed to fetch notifications:", error);
     }
   };
+
+  const fetchLeaderboard = useCallback(async () => {
+    setLeaderboardLoading(true);
+    try {
+      const response = await fetch("/api/leaderboard");
+      if (response.ok) {
+        const data = await response.json();
+        setLeaderboardData(data.leaderboard || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch leaderboard:", error);
+    } finally {
+      setLeaderboardLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (status === "loading") return;
+    if (!session) {
+      router.push("/login");
+      return;
+    }
+    fetchClassrooms();
+    fetchAssignments();
+    fetchNotifications();
+    fetchLeaderboard();
+  }, [session, status, router, fetchLeaderboard]);
 
   const markNotificationAsRead = async (notificationId: string) => {
     try {
@@ -550,7 +579,7 @@ console.log("Ready to start coding!");`);
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 lg:w-fit lg:grid-cols-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+          <TabsList className="grid w-full grid-cols-4 lg:w-fit lg:grid-cols-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
             <TabsTrigger value="classrooms" className="flex items-center space-x-2 data-[state=active]:bg-purple-100 dark:data-[state=active]:bg-purple-900/30 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-300">
               <Users className="h-4 w-4" />
               <span>Classrooms</span>
@@ -562,6 +591,10 @@ console.log("Ready to start coding!");`);
             <TabsTrigger value="assignments" className="flex items-center space-x-2 data-[state=active]:bg-purple-100 dark:data-[state=active]:bg-purple-900/30 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-300">
               <BookOpen className="h-4 w-4" />
               <span>Assignments</span>
+            </TabsTrigger>
+            <TabsTrigger value="leaderboard" className="flex items-center space-x-2 data-[state=active]:bg-purple-100 dark:data-[state=active]:bg-purple-900/30 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-300">
+              <GraduationCap className="h-4 w-4" />
+              <span>Leaderboard</span>
             </TabsTrigger>
           </TabsList>
 
@@ -1148,6 +1181,92 @@ console.log("Ready to start coding!");`);
                         >
                           {session?.user?.role === "TEACHER" ? "View Assignment" : "Start Assignment"}
                         </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Leaderboard Tab */}
+          <TabsContent value="leaderboard" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">
+                Classroom Leaderboards
+              </h1>
+            </div>
+
+            {leaderboardLoading ? (
+              <div className="flex justify-center items-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+              </div>
+            ) : leaderboardData.length === 0 ? (
+              <Card className="p-8 text-center bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                <GraduationCap className="h-12 w-12 text-zinc-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-zinc-600 dark:text-zinc-400 mb-2">
+                  No Leaderboards Available
+                </h3>
+                <p className="text-zinc-500 dark:text-zinc-500">
+                  Your teacher hasn&apos;t published any leaderboards yet. Check back later!
+                </p>
+              </Card>
+            ) : (
+              <div className="space-y-8">
+                {leaderboardData.map((classroomLeaderboard) => (
+                  <Card key={classroomLeaderboard.classroomId} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                    <CardHeader>
+                      <CardTitle className="flex items-center text-xl">
+                        <GraduationCap className="h-6 w-6 mr-3 text-purple-600 dark:text-purple-400" />
+                        {classroomLeaderboard.classroomName} Leaderboard
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {classroomLeaderboard.leaderboard.slice(0, 10).map((entry, index) => (
+                          <div 
+                            key={entry.userId} 
+                            className={`flex items-center justify-between p-4 rounded-lg transition-all ${
+                              index === 0 ? 'bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 border border-yellow-200 dark:border-yellow-800' :
+                              index === 1 ? 'bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/20 dark:to-slate-900/20 border border-gray-200 dark:border-gray-800' :
+                              index === 2 ? 'bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 border border-orange-200 dark:border-orange-800' :
+                              'bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700'
+                            }`}
+                          >
+                            <div className="flex items-center space-x-4">
+                              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${
+                                index === 0 ? 'bg-yellow-500 text-white' :
+                                index === 1 ? 'bg-gray-400 text-white' :
+                                index === 2 ? 'bg-orange-500 text-white' :
+                                'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
+                              }`}>
+                                {index + 1}
+                              </div>
+                              <div>
+                                <div className="font-semibold text-zinc-900 dark:text-zinc-100">
+                                  {entry.userName}
+                                </div>
+                                <div className="text-sm text-zinc-500 dark:text-zinc-400">
+                                  {entry.completedAssignments} assignments completed
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-bold text-lg text-purple-600 dark:text-purple-400">
+                                {entry.totalPoints} pts
+                              </div>
+                              <div className="text-sm text-zinc-500 dark:text-zinc-400">
+                                Avg: {entry.averageScore}%
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        
+                        {classroomLeaderboard.leaderboard.length === 0 && (
+                          <div className="text-center py-8 text-zinc-500 dark:text-zinc-400">
+                            No submissions in this classroom yet.
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>

@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Editor } from '@monaco-editor/react';
-import { ArrowLeft, Clock, User, BookOpen, CheckCircle, XCircle, AlertCircle, Play, Terminal, Paperclip, X, Trophy, Star } from 'lucide-react';
+import { ArrowLeft, Clock, User, BookOpen, CheckCircle, XCircle, AlertCircle, Trophy, Star } from 'lucide-react';
 import FileManager from '@/components/FileManager';
 import InteractiveExecutionPanel from '@/components/InteractiveExecutionPanel';
 
@@ -169,8 +169,7 @@ export default function AssignmentPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          code,
-          attachments: attachedFiles 
+          code
         }),
       });
 
@@ -187,19 +186,6 @@ export default function AssignmentPage() {
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const handleFileAttachment = (filePath: string, fileName: string, content: string) => {
-    const newFile = { name: fileName, path: filePath, content };
-    setAttachedFiles(prev => {
-      // Remove existing file with same name
-      const filtered = prev.filter(f => f.name !== fileName);
-      return [...filtered, newFile];
-    });
-  };
-
-  const removeAttachment = (fileName: string) => {
-    setAttachedFiles(prev => prev.filter(f => f.name !== fileName));
   };
 
   const gradeSubmission = async (submissionId: string, status: string, score: number, feedback: string) => {
@@ -259,56 +245,6 @@ export default function AssignmentPage() {
     setGradingSubmissionId(null);
     setGradingScore(0);
     setGradingFeedback('');
-  };
-
-  const executeCode = async (codeToExecute: string = code) => {
-    setExecuting(true);
-    setShowOutput(true);
-    setExecutionResult('Executing...');
-    setExecutionError('');
-    setExecutionTime(0);
-    
-    const startTime = Date.now();
-    
-    try {
-      const response = await fetch('/api/execute', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          code: codeToExecute,
-          language: assignment?.language || 'python',
-          input: codeInput || '',
-          timeout: 10,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to execute code');
-      }
-
-      const data = await response.json();
-      const endTime = Date.now();
-      const executionDuration = endTime - startTime;
-      
-      setExecutionTime(data.executionTime || executionDuration);
-      
-      if (data.success) {
-        setExecutionResult(data.output || 'No output produced');
-        setExecutionError('');
-      } else {
-        setExecutionResult('');
-        setExecutionError(data.error || 'Execution failed');
-      }
-    } catch (error) {
-      console.error('Error executing code:', error);
-      setExecutionResult('');
-      setExecutionError('Error: Failed to execute code');
-      setExecutionTime(0);
-    } finally {
-      setExecuting(false);
-    }
   };
 
   const saveToFile = async (filename: string) => {
@@ -513,86 +449,6 @@ export default function AssignmentPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {/* Input and Output Section for Teacher */}
-                  <div className="mb-6 space-y-4">
-                    {/* Input Section */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-medium text-sm text-zinc-700 dark:text-zinc-300">
-                          Test Input (for testing student submissions)
-                        </h4>
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setCodeInput("TestUser\n30\nTeacher")}
-                            className="text-xs h-6 px-2"
-                          >
-                            Sample Input
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setCodeInput("")}
-                            className="text-xs h-6 px-2"
-                          >
-                            Clear
-                          </Button>
-                        </div>
-                      </div>
-                      <Textarea
-                        placeholder="Enter test input values here (one per line for multiple inputs)..."
-                        value={codeInput}
-                        onChange={(e) => setCodeInput(e.target.value)}
-                        className="min-h-[80px] font-mono text-sm"
-                      />
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                        This input will be used when testing student code submissions
-                      </p>
-                    </div>
-
-                    {/* Output Section */}
-                    {showOutput && (
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <h4 className="font-medium flex items-center">
-                            <Terminal className="h-4 w-4 mr-2" />
-                            Execution Output
-                            {executionTime > 0 && (
-                              <span className="ml-2 text-xs text-zinc-500 dark:text-zinc-400">
-                                ({executionTime}ms)
-                              </span>
-                            )}
-                          </h4>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setShowOutput(false)}
-                            className="text-zinc-500 hover:text-zinc-700"
-                          >
-                            ✕
-                          </Button>
-                        </div>
-                        
-                        {/* Success Output */}
-                        {executionResult && (
-                          <div className="bg-zinc-900 text-green-400 p-4 rounded-lg font-mono text-sm max-h-48 overflow-y-auto border border-zinc-700">
-                            <div className="text-zinc-400 text-xs mb-2">Output:</div>
-                            <pre className="whitespace-pre-wrap">{executionResult}</pre>
-                          </div>
-                        )}
-                        
-                        {/* Error Output */}
-                        {executionError && (
-                          <div className="bg-zinc-900 text-red-400 p-4 rounded-lg font-mono text-sm max-h-48 overflow-y-auto border border-red-500/30">
-                            <div className="text-zinc-400 text-xs mb-2">Error:</div>
-                            <pre className="whitespace-pre-wrap">{executionError}</pre>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
                   <div className="space-y-4">
                     {allSubmissions
                       .filter(sub => {
@@ -637,28 +493,17 @@ export default function AssignmentPage() {
                           />
                         </div>
 
-                        <div className="flex items-center justify-between">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => executeCode(sub.code)}
-                            disabled={executing}
-                            className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
-                          >
-                            {executing ? (
-                              <>
-                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-green-600 mr-2"></div>
-                                Running...
-                              </>
-                            ) : (
-                              <>
-                                <Play className="h-3 w-3 mr-2" />
-                                Test Code
-                              </>
-                            )}
-                          </Button>
+                        {/* Interactive test panel for this submission */}
+                        <div className="border rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
+                          <InteractiveExecutionPanel
+                            code={sub.code}
+                            language={assignment.language}
+                            userId={session?.user?.id}
+                            className="min-h-[120px]"
+                          />
+                        </div>
 
-                          {/* Grade buttons */}
+                        <div className="flex items-center justify-between">
                           {sub.status === 'PENDING' || sub.status === 'NEEDS_REVIEW' ? (
                             <div className="flex space-x-2">
                               <Button

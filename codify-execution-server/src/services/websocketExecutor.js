@@ -70,18 +70,14 @@ class WebSocketExecutionServer {
     }
 
     try {
-      // Generate unique execution ID
       const executionId = uuidv4();
       
-      // Create temporary directory for this execution
       const tempDir = path.join(process.cwd(), 'temp', executionId);
       fs.mkdirSync(tempDir, { recursive: true });
       
-      // Write code to temporary file
       const codeFile = path.join(tempDir, 'main.py');
       fs.writeFileSync(codeFile, code);
       
-      // Create the line-by-line executor Python script
       const executorScript = this.createLineByLineExecutor();
       const executorFile = path.join(tempDir, 'executor.py');
       fs.writeFileSync(executorFile, executorScript);
@@ -256,13 +252,25 @@ class InteractiveExecutor:
             print(f"Error executing statement: {e}", file=sys.stderr)
             traceback.print_exc()
 
+# Store reference to original input function before replacing it
+original_input = builtins.input
+
 # Custom input function that signals to the parent process
 def custom_input(prompt=""):
     if prompt:
         print(f"__INPUT_REQUEST__{prompt}", flush=True)
     else:
         print("__INPUT_REQUEST__", flush=True)
-    return input()
+    
+    # Read from stdin (which will be provided by the Node.js process)
+    try:
+        line = sys.stdin.readline()
+        if line:
+            return line.rstrip('\\n\\r')
+        else:
+            return ""
+    except:
+        return ""
 
 # Replace built-in input function
 builtins.input = custom_input

@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import { WebSocketServer } from 'ws';
 import { createServer } from 'http';
 import dotenv from 'dotenv';
 import { RateLimiterMemory } from 'rate-limiter-flexible';
@@ -28,7 +27,6 @@ const __dirname = dirname(__filename);
 
 const app = express();
 const server = createServer(app);
-const wss = new WebSocketServer({ server });
 
 // Rate limiting
 const rateLimiter = new RateLimiterMemory({
@@ -92,13 +90,18 @@ app.use('/api/health', healthRoutes);
 app.use('/api/execute', codeExecutionRoutes);
 app.use('/api/files', fileManagerRoutes);
 
-// WebSocket handling
+app.get('/api/ping', (req, res) => {
+  res.json({ 
+    status: 'pong', 
+    timestamp: Date.now(),
+    server: 'execution-server'
+  });
+});
+
 const wsExecutionServer = new WebSocketExecutionServer(server);
 
-// Error handling middleware
 app.use(errorHandler);
 
-// 404 handler
 app.use('*', (req, res) => {
   res.status(404).json({
     error: 'Endpoint not found',
