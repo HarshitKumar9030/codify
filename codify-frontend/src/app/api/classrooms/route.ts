@@ -134,6 +134,12 @@ export async function GET() {
           createdAt: 'desc'
         }
       });
+
+      // Add isTeacher property for teacher's own classrooms
+      classrooms = classrooms.map(classroom => ({
+        ...classroom,
+        isTeacher: true
+      }));
     } else {
       // Get classrooms student is enrolled in
       classrooms = await prisma.classroom.findMany({
@@ -163,6 +169,12 @@ export async function GET() {
           createdAt: 'desc'
         }
       });
+
+      // Add isTeacher property for student enrolled classrooms
+      classrooms = classrooms.map(classroom => ({
+        ...classroom,
+        isTeacher: false
+      }));
     }
 
     return NextResponse.json({

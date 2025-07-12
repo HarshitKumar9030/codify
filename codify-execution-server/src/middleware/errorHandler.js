@@ -23,7 +23,7 @@ function errorHandler(error, req, res, next) {
   if (error.name === 'ValidationError') {
     statusCode = 400;
     message = 'Validation error';
-    details = isDevelopment ? error.details : null;
+    details = error.details; // Always show validation details
   } else if (error.name === 'SyntaxError' && error.type === 'entity.parse.failed') {
     statusCode = 400;
     message = 'Invalid JSON in request body';
@@ -52,10 +52,12 @@ function errorHandler(error, req, res, next) {
     requestId: req.id || 'unknown'
   };
 
-  // Add details in development mode
-  if (isDevelopment) {
+  // Add details in development mode or for validation errors
+  if (isDevelopment || error.name === 'ValidationError') {
     errorResponse.details = details || error.message;
-    errorResponse.stack = error.stack;
+    if (isDevelopment) {
+      errorResponse.stack = error.stack;
+    }
   }
 
   res.status(statusCode).json(errorResponse);

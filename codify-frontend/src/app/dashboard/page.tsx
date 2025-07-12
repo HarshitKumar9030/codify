@@ -22,11 +22,19 @@ import {
   Copy,
   UserPlus,
   GraduationCap,
-  Loader2
+  Loader2,
+  AlertCircle,
+  CheckCircle,
+  XCircle,
+  Bell,
+  Send,
+  MessageSquare
 } from "lucide-react";
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { ThemeToggle } from "@/components/theme-toggle";
+import Editor from "@monaco-editor/react";
+import { useTheme } from "next-themes";
 
 interface Classroom {
   id: string;
@@ -73,8 +81,24 @@ interface Assignment {
   }>;
 }
 
+interface Notification {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+  sender?: {
+    id: string;
+    name: string;
+    role: string;
+  };
+  conversationId?: string;
+}
+
 export default function Dashboard() {
   const { data: session, status } = useSession();
+  const { theme } = useTheme();
   const router = useRouter();
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,6 +131,8 @@ console.log("Ready to start coding!");`);
   const [input, setInput] = useState("");
   const [output, setOutput] = useState("");
   const [executionLoading, setExecutionLoading] = useState(false);
+  const [executionError, setExecutionError] = useState<string | null>(null);
+  const [executionSuccess, setExecutionSuccess] = useState<boolean | null>(null);
 
   // Assignment state
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -122,6 +148,11 @@ console.log("Ready to start coding!");`);
     points: 100
   });
   const [assignmentLoading, setAssignmentLoading] = useState(false);
+
+  // Notification state
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notificationsPanelOpen, setNotificationsPanelOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Update code template when language changes
   useEffect(() => {
@@ -158,6 +189,7 @@ console.log("Ready to start coding!");`);
     }
     fetchClassrooms();
     fetchAssignments();
+    fetchNotifications();
   }, [session, status, router]);
 
   const fetchClassrooms = async () => {
@@ -183,6 +215,38 @@ console.log("Ready to start coding!");`);
       }
     } catch (error) {
       console.error("Failed to fetch assignments:", error);
+    }
+  };
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await fetch("/api/notifications");
+      if (response.ok) {
+        const data = await response.json();
+        setNotifications(data.notifications || []);
+        setUnreadCount(data.notifications?.filter((n: Notification) => !n.isRead).length || 0);
+      }
+    } catch (error) {
+      console.error("Failed to fetch notifications:", error);
+    }
+  };
+
+  const markNotificationAsRead = async (notificationId: string) => {
+    try {
+      const response = await fetch(`/api/notifications/${notificationId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isRead: true }),
+      });
+      
+      if (response.ok) {
+        setNotifications(prev => prev.map(n => 
+          n.id === notificationId ? { ...n, isRead: true } : n
+        ));
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+    } catch (error) {
+      console.error("Failed to mark notification as read:", error);
     }
   };
 
@@ -290,6 +354,8 @@ console.log("Ready to start coding!");`);
     
     setExecutionLoading(true);
     setOutput("");
+    setExecutionError(null);
+    setExecutionSuccess(null);
     
     try {
       const response = await fetch("/api/execute", {
@@ -307,11 +373,17 @@ console.log("Ready to start coding!");`);
       
       if (result.success) {
         setOutput(result.output || "");
+        setExecutionSuccess(true);
+        setExecutionError(null);
       } else {
-        setOutput(`Error: ${result.error || "Unknown error occurred"}`);
+        setOutput("");
+        setExecutionError(result.error || "Unknown error occurred");
+        setExecutionSuccess(false);
       }
     } catch (error) {
-      setOutput(`Error: ${error instanceof Error ? error.message : "Network error"}`);
+      setOutput("");
+      setExecutionError(error instanceof Error ? error.message : "Network error");
+      setExecutionSuccess(false);
     } finally {
       setExecutionLoading(false);
     }
@@ -355,6 +427,111 @@ console.log("Ready to start coding!");`);
               <span className="text-sm text-zinc-600 dark:text-zinc-400 font-medium">
                 Welcome, {session?.user?.name || "User"}
               </span>
+              
+              {/* Notifications Panel */}
+              <div className="relative">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setNotificationsPanelOpen(!notificationsPanelOpen)}
+                  className="relative p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                >
+                  <Bell className="h-5 w-5 text-zinc-600 dark:text-zinc-400" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
+                </Button>
+                
+                {notificationsPanelOpen && (
+                  <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl z-50 max-h-96 overflow-y-auto">
+                    <div className="p-3 border-b border-zinc-200 dark:border-zinc-800">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Notifications</h3>
+                          {unreadCount > 0 && (
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400">{unreadCount} unread</p>
+                          )}
+                        </div>
+                        {unreadCount > 0 && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={async () => {
+                              try {
+                                const response = await fetch('/api/notifications', {
+                                  method: 'PATCH',
+                                  headers: {
+                                    'Content-Type': 'application/json',
+                                  },
+                                  body: JSON.stringify({ markAllAsRead: true }),
+                                });
+                                
+                                if (response.ok) {
+                                  setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+                                  setUnreadCount(0);
+                                }
+                              } catch (error) {
+                                console.error('Error marking all as read:', error);
+                              }
+                            }}
+                            className="text-xs text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300"
+                          >
+                            Mark All Read
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {notifications.length === 0 ? (
+                      <div className="p-6 text-center text-zinc-500 dark:text-zinc-400">
+                        <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p>No notifications yet</p>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                        {notifications.map((notification) => (
+                          <div
+                            key={notification.id}
+                            className={`p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer transition-colors ${
+                              !notification.isRead ? 'bg-purple-50 dark:bg-purple-950/20' : ''
+                            }`}
+                            onClick={() => markNotificationAsRead(notification.id)}
+                          >
+                            <div className="flex items-start space-x-3">
+                              <div className="flex-shrink-0">
+                                {notification.type === 'MESSAGE' ? (
+                                  <MessageSquare className="h-5 w-5 text-blue-500" />
+                                ) : (
+                                  <Bell className="h-5 w-5 text-purple-500" />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                                  {notification.title}
+                                </p>
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                                  {notification.message}
+                                </p>
+                                <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">
+                                  {new Date(notification.createdAt).toLocaleString()}
+                                </p>
+                              </div>
+                              {!notification.isRead && (
+                                <div className="flex-shrink-0">
+                                  <div className="h-2 w-2 bg-purple-500 rounded-full"></div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              
               <ThemeToggle />
               <Button
                 variant="outline"
@@ -490,7 +667,11 @@ console.log("Ready to start coding!");`);
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {classrooms.map((classroom) => (
-                <Card key={classroom.id} className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-purple-300 dark:hover:border-purple-600">
+                <Card 
+                  key={classroom.id} 
+                  className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-purple-300 dark:hover:border-purple-600 cursor-pointer"
+                  onClick={() => router.push(`/classrooms/${classroom.id}`)}
+                >
                   <CardHeader className="pb-3">
                     <div className="flex justify-between items-start">
                       <CardTitle className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{classroom.name}</CardTitle>
@@ -516,7 +697,10 @@ console.log("Ready to start coding!");`);
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => copyClassroomCode(classroom.code)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              copyClassroomCode(classroom.code);
+                            }}
                             className="h-8 w-8 p-0 hover:bg-purple-100 dark:hover:bg-purple-900/30 text-zinc-600 dark:text-zinc-400 hover:text-purple-600 dark:hover:text-purple-400"
                           >
                             <Copy className="h-3 w-3" />
@@ -576,6 +760,42 @@ console.log("Ready to start coding!");`);
               </div>
             </div>
 
+            {/* Execution Status Banner */}
+            {(executionSuccess !== null || executionError) && (
+              <div className={`p-4 rounded-lg border ${
+                executionError 
+                  ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800'
+                  : executionSuccess 
+                    ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800'
+                    : 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800'
+              }`}>
+                <div className="flex items-center gap-2">
+                  {executionError ? (
+                    <>
+                      <XCircle className="h-5 w-5 text-red-500" />
+                      <span className="font-medium text-red-800 dark:text-red-200">Execution Failed</span>
+                    </>
+                  ) : executionSuccess ? (
+                    <>
+                      <CheckCircle className="h-5 w-5 text-green-500" />
+                      <span className="font-medium text-green-800 dark:text-green-200">Code executed successfully!</span>
+                    </>
+                  ) : null}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setExecutionError(null);
+                      setExecutionSuccess(null);
+                    }}
+                    className="ml-auto h-6 w-6 p-0"
+                  >
+                    <XCircle className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Code Input */}
               <Card className="bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
@@ -586,12 +806,46 @@ console.log("Ready to start coding!");`);
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <Textarea
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    className="min-h-[350px] font-mono text-sm bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-500 dark:placeholder:text-zinc-400 resize-none focus:ring-purple-500 dark:focus:ring-purple-400"
-                    placeholder={`Write your ${language} code here...`}
-                  />
+                  <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
+                    <Editor
+                      height="350px"
+                      language={language}
+                      value={code}
+                      onChange={(value) => setCode(value || "")}
+                      theme={theme === "dark" ? "vs-dark" : "vs"}
+                      loading={
+                        <div className="flex items-center justify-center h-[350px] bg-zinc-50 dark:bg-zinc-900">
+                          <div className="flex items-center space-x-2">
+                            <Loader2 className="h-5 w-5 animate-spin text-purple-600" />
+                            <span className="text-sm text-zinc-600 dark:text-zinc-400">Loading editor...</span>
+                          </div>
+                        </div>
+                      }
+                      options={{
+                        minimap: { enabled: false },
+                        fontSize: 14,
+                        lineNumbers: "on",
+                        roundedSelection: false,
+                        scrollBeyondLastLine: false,
+                        automaticLayout: true,
+                        tabSize: 2,
+                        wordWrap: "on",
+                        suggest: {
+                          showKeywords: true,
+                          showSnippets: true,
+                          showFunctions: true,
+                          showVariables: true,
+                        },
+                        quickSuggestions: true,
+                        parameterHints: { enabled: true },
+                        hover: { enabled: true },
+                        bracketPairColorization: { enabled: true },
+                        foldingHighlight: true,
+                        selectionHighlight: true,
+                        occurrencesHighlight: "singleFile",
+                      }}
+                    />
+                  </div>
                   {language === "python" && (
                     <div className="space-y-2">
                       <Label htmlFor="input" className="text-sm font-medium text-zinc-700 dark:text-zinc-300 flex items-center gap-2">
@@ -619,24 +873,44 @@ console.log("Ready to start coding!");`);
                   <CardTitle className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
                     <Play className="h-5 w-5" />
                     Output
+                    {executionSuccess === true && (
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                    )}
+                    {executionSuccess === false && (
+                      <XCircle className="h-4 w-4 text-red-500" />
+                    )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="min-h-[350px] bg-zinc-950 dark:bg-zinc-950 rounded-lg p-4 overflow-auto border border-zinc-800 dark:border-zinc-700">
-                    <SyntaxHighlighter
-                      language="text"
-                      style={oneDark}
-                      customStyle={{
-                        background: 'transparent',
-                        padding: 0,
-                        margin: 0,
-                        fontSize: '14px',
-                        lineHeight: '1.5',
-                      }}
-                    >
-                      {output || "// Output will appear here after running your code"}
-                    </SyntaxHighlighter>
-                  </div>
+                  {executionError ? (
+                    <div className="min-h-[350px] bg-red-50 dark:bg-red-950/20 rounded-lg p-4 overflow-auto border border-red-200 dark:border-red-800">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+                        <div className="space-y-2">
+                          <h4 className="font-medium text-red-800 dark:text-red-200">Execution Error</h4>
+                          <pre className="text-sm text-red-700 dark:text-red-300 whitespace-pre-wrap font-mono">
+                            {executionError}
+                          </pre>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="min-h-[350px] bg-zinc-950 dark:bg-zinc-950 rounded-lg p-4 overflow-auto border border-zinc-800 dark:border-zinc-700">
+                      <SyntaxHighlighter
+                        language="text"
+                        style={oneDark}
+                        customStyle={{
+                          background: 'transparent',
+                          padding: 0,
+                          margin: 0,
+                          fontSize: '14px',
+                          lineHeight: '1.5',
+                        }}
+                      >
+                        {output || "// Output will appear here after running your code"}
+                      </SyntaxHighlighter>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -654,12 +928,12 @@ console.log("Ready to start coding!");`);
                       Create Assignment
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-2xl bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
+                  <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
                     <DialogHeader>
                       <DialogTitle className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Create New Assignment</DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-4 mt-4">
-                      <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-6 mt-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="title" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Assignment Title</Label>
                           <Input
@@ -686,27 +960,8 @@ console.log("Ready to start coding!");`);
                           </Select>
                         </div>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="description" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Description</Label>
-                        <Textarea
-                          id="description"
-                          value={newAssignment.description}
-                          onChange={(e) => setNewAssignment(prev => ({ ...prev, description: e.target.value }))}
-                          placeholder="Enter assignment description"
-                          className="bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-500 dark:placeholder:text-zinc-400 min-h-[80px]"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="instructions" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Instructions</Label>
-                        <Textarea
-                          id="instructions"
-                          value={newAssignment.instructions}
-                          onChange={(e) => setNewAssignment(prev => ({ ...prev, instructions: e.target.value }))}
-                          placeholder="Enter detailed instructions for students"
-                          className="bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-500 dark:placeholder:text-zinc-400 min-h-[100px]"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="language" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Programming Language</Label>
                           <Select value={newAssignment.language} onValueChange={(value) => setNewAssignment(prev => ({ ...prev, language: value }))}>
@@ -731,16 +986,62 @@ console.log("Ready to start coding!");`);
                           />
                         </div>
                       </div>
+
                       <div className="space-y-2">
-                        <Label htmlFor="code" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Starter Code (Optional)</Label>
+                        <Label htmlFor="description" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Description</Label>
                         <Textarea
-                          id="code"
-                          value={newAssignment.code}
-                          onChange={(e) => setNewAssignment(prev => ({ ...prev, code: e.target.value }))}
-                          placeholder="Enter starter code for students"
-                          className="bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-500 dark:placeholder:text-zinc-400 min-h-[120px] font-mono text-sm"
+                          id="description"
+                          value={newAssignment.description}
+                          onChange={(e) => setNewAssignment(prev => ({ ...prev, description: e.target.value }))}
+                          placeholder="Enter assignment description"
+                          className="bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-500 dark:placeholder:text-zinc-400 min-h-[100px]"
                         />
                       </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="instructions" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Instructions</Label>
+                        <Textarea
+                          id="instructions"
+                          value={newAssignment.instructions}
+                          onChange={(e) => setNewAssignment(prev => ({ ...prev, instructions: e.target.value }))}
+                          placeholder="Enter detailed instructions for students"
+                          className="bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-500 dark:placeholder:text-zinc-400 min-h-[120px]"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="code" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Starter Code (Optional)</Label>
+                        <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
+                          <Editor
+                            height="200px"
+                            language={newAssignment.language}
+                            value={newAssignment.code}
+                            onChange={(value) => setNewAssignment(prev => ({ ...prev, code: value || "" }))}
+                            theme={theme === "dark" ? "vs-dark" : "vs"}
+                            loading={
+                              <div className="flex items-center justify-center h-[200px] bg-zinc-50 dark:bg-zinc-900">
+                                <div className="flex items-center space-x-2">
+                                  <Loader2 className="h-4 w-4 animate-spin text-purple-600" />
+                                  <span className="text-xs text-zinc-600 dark:text-zinc-400">Loading...</span>
+                                </div>
+                              </div>
+                            }
+                            options={{
+                              minimap: { enabled: false },
+                              fontSize: 12,
+                              lineNumbers: "on",
+                              scrollBeyondLastLine: false,
+                              automaticLayout: true,
+                              tabSize: 2,
+                              wordWrap: "on",
+                              suggest: { showKeywords: true, showSnippets: true },
+                              quickSuggestions: true,
+                              bracketPairColorization: { enabled: true },
+                            }}
+                          />
+                        </div>
+                      </div>
+
                       <div className="space-y-2">
                         <Label htmlFor="dueDate" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Due Date (Optional)</Label>
                         <Input
@@ -751,20 +1052,30 @@ console.log("Ready to start coding!");`);
                           className="bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100"
                         />
                       </div>
-                      <Button 
-                        onClick={createAssignment} 
-                        className="w-full bg-purple-600 hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-700"
-                        disabled={assignmentLoading || !newAssignment.title.trim() || !newAssignment.classroomId}
-                      >
-                        {assignmentLoading ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Creating...
-                          </>
-                        ) : (
-                          "Create Assignment"
-                        )}
-                      </Button>
+
+                      <div className="flex gap-3 pt-4">
+                        <Button 
+                          onClick={createAssignment} 
+                          className="flex-1 bg-purple-600 hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-700"
+                          disabled={assignmentLoading || !newAssignment.title.trim() || !newAssignment.classroomId}
+                        >
+                          {assignmentLoading ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Creating...
+                            </>
+                          ) : (
+                            "Create Assignment"
+                          )}
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          onClick={() => setCreateAssignmentOpen(false)}
+                          className="border-zinc-200 dark:border-zinc-700"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
                     </div>
                   </DialogContent>
                 </Dialog>

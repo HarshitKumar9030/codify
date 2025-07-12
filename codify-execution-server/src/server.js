@@ -11,13 +11,14 @@ import { dirname, join } from 'path';
 // Import routes
 import codeExecutionRoutes from './routes/codeExecution.js';
 import healthRoutes from './routes/health.js';
+import fileManagerRoutes from './routes/fileManager.js';
 
 // Import middleware
 import errorHandler from './middleware/errorHandler.js';
 import requestLogger from './middleware/requestLogger.js';
 
 // Import services
-import WebSocketService from './services/websocketService.js';
+import WebSocketExecutionServer from './services/websocketExecutor.js';
 
 // Load environment variables
 dotenv.config();
@@ -32,7 +33,13 @@ const wss = new WebSocketServer({ server });
 // Rate limiting
 const rateLimiter = new RateLimiterMemory({
   keyPrefix: 'middleware',
-  points: 10, // Number of requests
+  points: 50, // Number of requests (increased for file operations)
+  duration: 60, // Per 60 seconds
+});
+
+const fileRateLimiter = new RateLimiterMemory({
+  keyPrefix: 'files',
+  points: 100, // More permissive for file operations
   duration: 60, // Per 60 seconds
 });
 
@@ -66,7 +73,9 @@ app.use(requestLogger);
 // Rate limiting middleware
 app.use(async (req, res, next) => {
   try {
-    await rateLimiter.consume(req.ip);
+    // Use different rate limiter for file operations
+    const limiter = req.path.startsWith('/api/files') ? fileRateLimiter : rateLimiter;
+    await limiter.consume(req.ip);
     next();
   } catch (rejRes) {
     const secs = Math.round(rejRes.msBeforeNext / 1000) || 1;
@@ -81,10 +90,10 @@ app.use(async (req, res, next) => {
 // Routes
 app.use('/api/health', healthRoutes);
 app.use('/api/execute', codeExecutionRoutes);
+app.use('/api/files', fileManagerRoutes);
 
 // WebSocket handling
-const wsService = new WebSocketService(wss);
-wsService.initialize();
+const wsExecutionServer = new WebSocketExecutionServer(server);
 
 // Error handling middleware
 app.use(errorHandler);

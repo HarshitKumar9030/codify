@@ -10,9 +10,9 @@ const executionService = new CodeExecutionService();
 const executeCodeSchema = Joi.object({
   code: Joi.string().required().max(50000), // 50KB limit
   language: Joi.string().valid('python', 'javascript').required(),
-  input: Joi.string().optional().max(10000), // 10KB limit for input
+  input: Joi.string().allow('').optional().max(10000), // 10KB limit for input, allow empty string
   timeout: Joi.number().integer().min(1).max(30).default(10), // 1-30 seconds
-});
+}).unknown(false); // Don't allow unknown fields
 
 const getResultSchema = Joi.object({
   executionId: Joi.string().uuid().required(),
@@ -29,8 +29,14 @@ router.post('/', validateRequest(executeCodeSchema), async (req, res) => {
     const { code, language, input, timeout } = req.body;
     const executionId = uuidv4();
     
-    // Log execution attempt
-    console.log(`Execution request ${executionId}: ${language}`);
+    // Log execution attempt with request details
+    console.log(`Execution request ${executionId}: ${language}`, {
+      codeLength: code.length,
+      hasInput: !!input,
+      inputLength: input ? input.length : 0,
+      timeout,
+      requestBody: Object.keys(req.body)
+    });
     
     // Start code execution (async)
     const executionPromise = executionService.executeCode({
@@ -131,6 +137,78 @@ router.delete('/:executionId', validateRequest(getResultSchema, 'params'), async
       success: false,
       error: 'Internal server error',
       message: 'Failed to cancel execution'
+    });
+  }
+});
+
+/**
+ * POST /api/execute/file
+ * Execute a file from user's file system
+ */
+const executeFileSchema = Joi.object({
+  userId: Joi.string().required(),
+  filePath: Joi.string().required().max(1000),
+  input: Joi.string().allow('').optional().max(10000),
+  timeout: Joi.number().integer().min(1).max(30).default(10),
+}).unknown(false);
+
+router.post('/file', validateRequest(executeFileSchema), async (req, res) => {
+  try {
+    const { userId, filePath, input, timeout } = req.body;
+    const executionId = uuidv4();
+    
+    // Log file execution attempt
+    console.log(`File execution request ${executionId}: ${filePath}`, {
+      userId,
+      hasInput: !!input,
+      inputLength: input ? input.length : 0,
+      timeout
+    });
+    
+    // Start file execution (async)
+    const executionPromise = executionService.executeFile({
+      executionId,
+      userId,
+      filePath,
+      input,
+      timeout,
+      clientIp: req.ip,
+    });
+
+    // Handle both sync and async execution
+    try {
+      const result = await Promise.race([
+        executionPromise,
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('timeout')), 500)
+        )
+      ]);
+      
+      // If execution completed quickly, return immediate result
+      res.json({
+        success: result.status === 'completed',
+        executionId: result.executionId,
+        status: result.status,
+        output: result.output || '',
+        error: result.error || '',
+        executionTime: result.executionTime || 0
+      });
+    } catch (timeoutError) {
+      // Execution is taking longer, return execution ID for polling
+      res.json({
+        success: true,
+        executionId,
+        status: 'pending',
+        message: 'File execution started. Use the execution ID to poll for results.'
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ File execution endpoint error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      message: 'Failed to execute file'
     });
   }
 });

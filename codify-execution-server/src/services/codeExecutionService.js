@@ -281,6 +281,51 @@ class CodeExecutionService {
       memoryUsage: process.memoryUsage()
     };
   }
+
+  /**
+   * Execute a file from user's file system
+   */
+  async executeFile({ executionId, userId, filePath, input = '', timeout = 10, clientIp }) {
+    try {
+      // Import FileManagerService to access user files
+      const { default: FileManagerService } = await import('./fileManagerService.js');
+      const fileManager = new FileManagerService();
+      
+      // Get file content
+      const fileResult = await fileManager.getFileContent(userId, filePath);
+      if (!fileResult.success) {
+        throw new Error(`Failed to read file: ${fileResult.error}`);
+      }
+
+      // Determine language based on file extension
+      const extension = filePath.split('.').pop().toLowerCase();
+      let language;
+      
+      switch (extension) {
+        case 'py':
+          language = 'python';
+          break;
+        case 'js':
+          language = 'javascript';
+          break;
+        default:
+          throw new Error(`Unsupported file extension: ${extension}`);
+      }
+
+      // Execute the file content
+      return await this.executeCode({
+        executionId,
+        code: fileResult.content,
+        language,
+        input,
+        timeout,
+        clientIp
+      });
+    } catch (error) {
+      console.error(`❌ File execution ${executionId} failed:`, error.message);
+      throw error;
+    }
+  }
 }
 
 export default CodeExecutionService;
