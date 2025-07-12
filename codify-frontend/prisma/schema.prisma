@@ -1,0 +1,175 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// NextAuth.js Models
+model Account {
+  id                String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String  @db.ObjectId
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  sessionToken String   @unique
+  userId       String   @db.ObjectId
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          UserRole  @default(STUDENT)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  accounts      Account[]
+  sessions      Session[]
+  
+  // Teacher relations
+  classrooms    Classroom[] @relation("TeacherClassrooms")
+  assignments   Assignment[] @relation("TeacherAssignments")
+  
+  // Student relations
+  enrollments   Enrollment[]
+  submissions   Submission[]
+  notifications Notification[]
+}
+
+model VerificationToken {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Application Models
+enum UserRole {
+  STUDENT
+  TEACHER
+  ADMIN
+}
+
+model Classroom {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  description String?
+  code        String   @unique // Join code for students
+  teacherId   String   @db.ObjectId
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  teacher     User         @relation("TeacherClassrooms", fields: [teacherId], references: [id], onDelete: Cascade)
+  enrollments Enrollment[]
+  assignments Assignment[]
+}
+
+model Enrollment {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  studentId   String   @db.ObjectId
+  classroomId String   @db.ObjectId
+  enrolledAt  DateTime @default(now())
+
+  // Relations
+  student    User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  classroom  Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, classroomId])
+}
+
+model Assignment {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  description String
+  instructions String? // Additional instructions
+  code        String   // Starter code
+  testCases   String   // JSON string of test cases
+  dueDate     DateTime?
+  language    String   @default("python")
+  points      Int      @default(100) // Points for the assignment
+  teacherId   String   @db.ObjectId
+  classroomId String   @db.ObjectId
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  teacher     User         @relation("TeacherAssignments", fields: [teacherId], references: [id], onDelete: Cascade)
+  classroom   Classroom    @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  submissions Submission[]
+}
+
+model Submission {
+  id           String           @id @default(auto()) @map("_id") @db.ObjectId
+  code         String
+  status       SubmissionStatus @default(PENDING)
+  score        Int?             // 0-100
+  feedback     String?
+  executionLog String?          // JSON string of execution results
+  studentId    String           @db.ObjectId
+  assignmentId String           @db.ObjectId
+  submittedAt  DateTime         @default(now())
+  gradedAt     DateTime?
+
+  // Relations
+  student    User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+}
+
+enum SubmissionStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  NEEDS_REVIEW
+}
+
+model Notification {
+  id        String            @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String            @db.ObjectId
+  type      NotificationType
+  title     String
+  message   String
+  data      String?           // JSON string for additional data
+  read      Boolean           @default(false)
+  createdAt DateTime          @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum NotificationType {
+  ASSIGNMENT_CREATED
+  ASSIGNMENT_DUE
+  ASSIGNMENT_GRADED
+  CLASSROOM_ANNOUNCEMENT
+  GENERAL
+}
