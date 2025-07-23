@@ -1,244 +1,232 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import WebSocketManager, { type WebSocketMessage } from '../utils/WebSocketManager';
 
-interface ExecutionMessage {
-  type: 'output' | 'error' | 'input_request' | 'execution_started' | 'execution_complete' | 'execution_stopped' | 'input_sent';
-  data?: string;
-  message?: string;
-  executionId?: string;
-  exitCode?: number;
-  input?: string;
-}
-
-interface ExecutionState {
-  isConnected: boolean;
-  isExecuting: boolean;
-  isWaitingForInput: boolean;
-  output: string[];
-  currentInputPrompt: string;
-}
+// Get WebSocket server URL from environment variable or fallback to localhost
+const WS_SERVER_URL = process.env.REACT_APP_WS_SERVER_URL || process.env.NEXT_PUBLIC_WS_SERVER_URL || 'ws://localhost:8080';
+const HTTP_SERVER_URL = (process.env.REACT_APP_WS_SERVER_URL || process.env.NEXT_PUBLIC_WS_SERVER_URL || 'ws://localhost:8080').replace('ws://', 'http://').replace('wss://', 'https://');
 
 export function useWebSocketExecution() {
-  const [state, setState] = useState<ExecutionState>({
-    isConnected: false,
-    isExecuting: false,
-    isWaitingForInput: false,
-    output: [],
-    currentInputPrompt: ''
-  });
+  const [isConnected, setIsConnected] = useState(false);
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [output, setOutput] = useState<string[]>([]);
+  const [isWaitingForInput, setIsWaitingForInput] = useState(false);
+  const [currentInputPrompt, setCurrentInputPrompt] = useState('');
+  const [ping, setPing] = useState<number | null>(null);
+  
+  const wsManager = useRef<WebSocketManager>(WebSocketManager.getInstance());
+  const hookId = useRef<string>(`hook_${Date.now()}_${Math.random()}`);
+  const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastPingTimeRef = useRef<number>(0);
 
-  const wsRef = useRef<WebSocket | null>(null);
-  const executionIdRef = useRef<string | null>(null);
-
-  const handleMessage = useCallback((message: ExecutionMessage) => {
+  // Handle WebSocket messages
+  const handleWebSocketMessage = useCallback((message: WebSocketMessage) => {
     switch (message.type) {
-      case 'execution_started':
-        executionIdRef.current = message.executionId || null;
-        setState(prev => ({ 
-          ...prev, 
-          isExecuting: true, 
-          output: [...prev.output, '🚀 Execution started...']
-        }));
-        break;
-
       case 'output':
         if (message.data) {
-          setState(prev => ({ 
-            ...prev, 
-            output: [...prev.output, message.data || '']
-          }));
+          setOutput(prev => [...prev, message.data as string]);
         }
         break;
-
       case 'error':
         if (message.data) {
-          setState(prev => ({ 
-            ...prev, 
-            output: [...prev.output, `❌ Error: ${message.data}`]
-          }));
+          setOutput(prev => [...prev, `Error: ${message.data}`]);
         }
         break;
-
-      case 'input_request':
-        setState(prev => ({ 
-          ...prev, 
-          isWaitingForInput: true,
-          currentInputPrompt: message.message || 'Enter input:',
-          output: [...prev.output, `📝 ${message.message || 'Enter input:'}`]
-        }));
+      case 'execution_started':
+        setIsExecuting(true);
+        setOutput([]);
         break;
-
-      case 'input_sent':
-        setState(prev => ({ 
-          ...prev, 
-          isWaitingForInput: false,
-          currentInputPrompt: '',
-          output: [...prev.output, `> ${message.input || ''}`]
-        }));
-        break;
-
       case 'execution_complete':
-        setState(prev => ({ 
-          ...prev, 
-          isExecuting: false,
-          isWaitingForInput: false,
-          output: [...prev.output, `✅ Execution completed (exit code: ${message.exitCode})`]
-        }));
-        executionIdRef.current = null;
+        setIsExecuting(false);
+        setIsWaitingForInput(false);
+        setCurrentInputPrompt('');
+        if (message.exitCode !== undefined) {
+          setOutput(prev => [...prev, `Process exited with code ${message.exitCode}`]);
+        }
         break;
-
+      case 'execution_ready':
+        setIsExecuting(false);
+        break;
       case 'execution_stopped':
-        setState(prev => ({ 
-          ...prev, 
-          isExecuting: false,
-          isWaitingForInput: false,
-          output: [...prev.output, '⏹️ Execution stopped']
-        }));
-        executionIdRef.current = null;
+        setIsExecuting(false);
+        setIsWaitingForInput(false);
+        setCurrentInputPrompt('');
+        setOutput(prev => [...prev, 'Execution stopped']);
         break;
-
-      default:
-        console.warn('Unknown message type:', message.type);
+      case 'input_request':
+        setIsWaitingForInput(true);
+        setCurrentInputPrompt(message.message || 'Input required:');
+        break;
+      case 'input_sent':
+        setIsWaitingForInput(false);
+        setCurrentInputPrompt('');
+        break;
     }
   }, []);
 
-  const connect = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
+  const measurePing = useCallback(async () => {
+    if (!isConnected) return;
+    
+    // Rate limiting: Don't ping more than once every 30 seconds
+    const now = Date.now();
+    if (now - lastPingTimeRef.current < 30000) {
       return;
     }
+    lastPingTimeRef.current = now;
+    
+    try {
+      const start = Date.now();
+      const response = await fetch(`${HTTP_SERVER_URL}/api/ping`, {
+        method: 'GET',
+        mode: 'cors',
+        cache: 'no-cache'
+      });
+      if (response.ok) {
+        const end = Date.now();
+        setPing(end - start);
+      } else {
+        setPing(null);
+      }
+    } catch (error) {
+      console.error('Ping error:', error);
+      setPing(null);
+    }
+  }, [isConnected]);
 
-    const wsUrl = process.env.NODE_ENV === 'production' 
-      ? 'wss://your-execution-server.com' 
-      : 'ws://localhost:8080';
-
-    wsRef.current = new WebSocket(wsUrl);
-
-    wsRef.current.onopen = () => {
-      setState(prev => ({ ...prev, isConnected: true }));
-      console.log('WebSocket connected for code execution');
-    };
-
-    wsRef.current.onmessage = (event) => {
+  // Start ping interval when connected
+  const startPingInterval = useCallback(() => {
+    // Clear any existing interval
+    if (pingIntervalRef.current) {
+      clearInterval(pingIntervalRef.current);
+    }
+    // Measure ping every 60 seconds (reduced frequency to avoid rate limiting)
+    const interval = setInterval(async () => {
+      if (!isConnected) return;
+      // Check rate limit before making request
+      const now = Date.now();
+      if (now - lastPingTimeRef.current < 30000) {
+        return;
+      }
+      lastPingTimeRef.current = now;
+      
       try {
-        const message: ExecutionMessage = JSON.parse(event.data);
-        handleMessage(message);
+        const start = Date.now();
+        const response = await fetch(`${HTTP_SERVER_URL}/api/ping`, {
+          method: 'GET',
+          mode: 'cors',
+          cache: 'no-cache'
+        });
+        if (response.ok) {
+          const end = Date.now();
+          setPing(end - start);
+        } else {
+          setPing(null);
+        }
       } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
+        console.error('Ping error:', error);
+        setPing(null);
       }
-    };
+    }, 60000);
+    pingIntervalRef.current = interval;
+    // Initial ping measurement with delay to avoid immediate rate limiting
+    setTimeout(() => measurePing(), 5000);
+  }, [isConnected, measurePing]);
 
-    wsRef.current.onclose = () => {
-      setState(prev => ({ 
-        ...prev, 
-        isConnected: false, 
-        isExecuting: false,
-        isWaitingForInput: false 
-      }));
-      console.log('WebSocket disconnected');
-    };
-
-    wsRef.current.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      setState(prev => ({ 
-        ...prev, 
-        isConnected: false, 
-        isExecuting: false,
-        isWaitingForInput: false 
-      }));
-    };
-  }, [handleMessage]);
-
-  const executeCode = useCallback((code: string, language: string = 'python', userId?: string) => {
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-      console.error('WebSocket not connected');
-      return;
-    }
-
-    if (state.isExecuting) {
-      console.warn('Code is already executing');
-      return;
-    }
-
-    setState(prev => ({ 
-      ...prev, 
-      output: [],
-      isExecuting: true,
-      isWaitingForInput: false,
-      currentInputPrompt: ''
-    }));
-
-    wsRef.current.send(JSON.stringify({
-      type: 'execute',
-      payload: {
-        code,
-        language,
-        userId,
-        sessionId: Date.now().toString()
-      }
-    }));
-  }, [state.isExecuting]);
-
-  const sendInput = useCallback((input: string) => {
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-      console.error('WebSocket not connected');
-      return;
-    }
-
-    if (!state.isWaitingForInput) {
-      console.warn('Not waiting for input');
-      return;
-    }
-
-    wsRef.current.send(JSON.stringify({
-      type: 'input',
-      payload: { input }
-    }));
-  }, [state.isWaitingForInput]);
-
-  const stopExecution = useCallback(() => {
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-      console.error('WebSocket not connected');
-      return;
-    }
-
-    wsRef.current.send(JSON.stringify({
-      type: 'stop',
-      payload: {}
-    }));
-  }, []);
-
-  const clearOutput = useCallback(() => {
-    setState(prev => ({ ...prev, output: [] }));
-  }, []);
-
-  const disconnect = useCallback(() => {
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-  }, []);
-
-  // Auto-connect on mount
+  // Connect to WebSocket server
   useEffect(() => {
-    connect();
-    return () => {
-      disconnect();
+    const manager = wsManager.current;
+    const id = hookId.current;
+    
+    // Add listeners
+    manager.addListener(id, handleWebSocketMessage);
+    
+    // Connect
+    manager.connect(WS_SERVER_URL).catch(error => {
+      console.error('Failed to connect to WebSocket:', error);
+    });
+
+    // Listen for connection state changes to start ping interval
+    const connectionListener = (connected: boolean) => {
+      setIsConnected(connected);
+      if (connected) {
+        startPingInterval();
+      } else {
+        if (pingIntervalRef.current) {
+          clearInterval(pingIntervalRef.current);
+          pingIntervalRef.current = null;
+        }
+      }
     };
-  }, [connect, disconnect]);
+    
+    manager.addConnectionListener(connectionListener);
+
+    // Cleanup function
+    return () => {
+      manager.removeListener(id);
+      manager.removeConnectionListener(connectionListener);
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current);
+        pingIntervalRef.current = null;
+      }
+    };
+  }, [handleWebSocketMessage, startPingInterval]);
+
+  // Execute code
+  const executeCode = useCallback((code: string, language: string) => {
+    const manager = wsManager.current;
+    if (!manager.isConnected()) {
+      console.error('WebSocket not connected');
+      return;
+    }
+
+    manager.send({
+      type: 'execute',
+      data: code,
+      language: language
+    });
+  }, []);
+
+  // Stop execution
+  const stopExecution = useCallback(() => {
+    const manager = wsManager.current;
+    if (!manager.isConnected()) {
+      console.error('WebSocket not connected');
+      return;
+    }
+
+    manager.send({
+      type: 'stop'
+    });
+  }, []);
+
+  // Send input to running process
+  const sendInput = useCallback((input: string) => {
+    const manager = wsManager.current;
+    if (!manager.isConnected()) {
+      console.error('WebSocket not connected');
+      return;
+    }
+
+    manager.send({
+      type: 'input',
+      input: input
+    });
+  }, []);
+
+  // Clear output
+  const clearOutput = useCallback(() => {
+    setOutput([]);
+  }, []);
 
   return {
-    // State
-    isConnected: state.isConnected,
-    isExecuting: state.isExecuting,
-    isWaitingForInput: state.isWaitingForInput,
-    output: state.output,
-    currentInputPrompt: state.currentInputPrompt,
-    
-    // Actions
+    isConnected,
+    isExecuting,
+    output,
     executeCode,
-    sendInput,
     stopExecution,
+    sendInput,
     clearOutput,
-    connect,
-    disconnect
+    isWaitingForInput,
+    currentInputPrompt,
+    ping
   };
 }

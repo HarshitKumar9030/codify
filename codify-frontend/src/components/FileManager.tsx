@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Folder, File, Plus, Trash2 } from 'lucide-react';
+import { Folder, File, Plus, Trash2, Download } from 'lucide-react';
 
 interface FileItem {
   name: string;
@@ -38,6 +38,7 @@ export default function FileManager({
   const [students, setStudents] = useState<Array<{id: string, name: string}>>([]);
   const [viewingFile, setViewingFile] = useState<{path: string, content: string, name: string} | null>(null);
   const [showFileViewer, setShowFileViewer] = useState(false);
+  const [studentsLoading, setStudentsLoading] = useState(false);
 
   // Load students for teacher view
   useEffect(() => {
@@ -84,10 +85,35 @@ export default function FileManager({
     }
   }, [userId, classroomId, isTeacher, targetUserId, selectedStudentId]);
 
+  // Fetch students for teacher's dropdown
+  const fetchStudents = useCallback(async () => {
+    if (!isTeacher || !classroomId) return;
+    
+    setStudentsLoading(true);
+    try {
+      const response = await fetch(`/api/classroom/${classroomId}/students`);
+      if (response.ok) {
+        const data = await response.json();
+        setStudents(data.students || []);
+      }
+    } catch (error) {
+      console.error('Error fetching students:', error);
+    } finally {
+      setStudentsLoading(false);
+    }
+  }, [isTeacher, classroomId]);
+
   // Load files when component mounts or selectedStudentId changes
   useEffect(() => {
     loadFiles('/');
   }, [loadFiles, selectedStudentId]);
+
+  // Fetch students when component mounts (for teachers)
+  useEffect(() => {
+    if (isTeacher && classroomId) {
+      fetchStudents();
+    }
+  }, [fetchStudents, isTeacher, classroomId]);
 
   const handleFileClick = async (file: FileItem) => {
     if (file.type === 'directory') {
@@ -98,11 +124,13 @@ export default function FileManager({
         const effectiveUserId = isTeacher ? selectedStudentId : (targetUserId || userId);
         const params = new URLSearchParams();
         if (effectiveUserId) params.append('userId', effectiveUserId);
+        params.append('path', file.path);
+        if (userId) params.append('requestingUserId', userId);
         if (classroomId) params.append('classroomId', classroomId);
         if (isTeacher) params.append('isTeacher', 'true');
         
-        const pathParts = file.path.split('/').filter(p => p);
-        const response = await fetch(`/api/files/${pathParts.join('/')}?${params}`);
+        console.log('Loading file:', file.path, 'with params:', params.toString());
+        const response = await fetch(`/api/files/content?${params}`);
         const data = await response.json();
         
         if (data.success) {
@@ -114,6 +142,8 @@ export default function FileManager({
           });
           setShowFileViewer(true);
           onFileSelect(file.path, content);
+        } else {
+          console.error('Failed to load file:', data.error || data.message);
         }
       } catch (error) {
         console.error('Error loading file content:', error);
@@ -204,6 +234,41 @@ export default function FileManager({
     } catch (error) {
       console.error('Error deleting file:', error);
       alert('Error deleting file. Please try again.');
+    }
+  };
+
+  const handleDownloadFile = async (file: FileItem) => {
+    if (file.type === 'directory') return;
+    
+    try {
+      const effectiveUserId = isTeacher ? selectedStudentId : (targetUserId || userId);
+      
+      const params = new URLSearchParams();
+      params.append('userId', effectiveUserId || '');
+      params.append('path', file.path);
+      params.append('requestingUserId', userId || '');
+      params.append('isTeacher', isTeacher.toString());
+      if (classroomId) params.append('classroomId', classroomId);
+      
+      const response = await fetch(`/api/files/download?${params}`);
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = file.name;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        const errorData = await response.json();
+        alert(`Error: ${errorData.error || 'Failed to download file'}`);
+      }
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      alert('Error downloading file. Please try again.');
     }
   };
 
@@ -354,15 +419,30 @@ export default function FileManager({
                     )}
                   </div>
                 </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteFile(file);
-                  }}
-                  className="p-2 text-zinc-400 hover:text-red-500 dark:hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <div className="flex items-center space-x-1">
+                  {file.type === 'file' && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDownloadFile(file);
+                      }}
+                      className="p-2 text-zinc-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors opacity-0 group-hover:opacity-100"
+                      title="Download file"
+                    >
+                      <Download className="w-4 h-4" />
+                    </button>
+                  )}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteFile(file);
+                    }}
+                    className="p-2 text-zinc-400 hover:text-red-500 dark:hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                    title="Delete file"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -474,8 +554,8 @@ export default function FileManager({
             
             {/* File Content */}
             <div className="flex-1 p-4 overflow-hidden">
-              <div className="h-full bg-zinc-900 rounded-lg overflow-hidden">
-                <pre className="h-full p-4 overflow-auto text-sm font-mono text-green-400 whitespace-pre-wrap">
+              <div className="h-full bg-zinc-50 dark:bg-zinc-900 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700">
+                <pre className="h-full p-4 overflow-auto text-sm font-mono text-zinc-800 dark:text-green-400 whitespace-pre-wrap">
                   {viewingFile.content || 'File is empty'}
                 </pre>
               </div>

@@ -61,6 +61,10 @@ model User {
   enrollments   Enrollment[]
   submissions   Submission[]
   notifications Notification[]
+  
+  // Chat relations
+  sentMessages  ChatMessage[] @relation("SentMessages")
+  messagesRead  MessageRead[]
 }
 
 model VerificationToken {
@@ -92,6 +96,7 @@ model Classroom {
   teacher     User         @relation("TeacherClassrooms", fields: [teacherId], references: [id], onDelete: Cascade)
   enrollments Enrollment[]
   assignments Assignment[]
+  messages    ChatMessage[]
 }
 
 model Enrollment {
@@ -172,4 +177,45 @@ enum NotificationType {
   ASSIGNMENT_GRADED
   CLASSROOM_ANNOUNCEMENT
   GENERAL
+}
+
+model ChatMessage {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  content     String
+  messageType MessageType @default(TEXT)
+  fileUrl     String?     // URL to uploaded file
+  fileName    String?     // Original filename
+  fileSize    Int?        // File size in bytes
+  senderId    String      @db.ObjectId
+  classroomId String      @db.ObjectId
+  replyToId   String?     @db.ObjectId // For threaded messages
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relations
+  sender       User         @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  classroom    Classroom    @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  replyTo      ChatMessage? @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  replies      ChatMessage[] @relation("MessageReplies")
+  readBy       MessageRead[]
+}
+
+model MessageRead {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  messageId String   @db.ObjectId
+  userId    String   @db.ObjectId
+  readAt    DateTime @default(now())
+
+  // Relations
+  message ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+}
+
+enum MessageType {
+  TEXT
+  FILE
+  CODE
+  SYSTEM
 }

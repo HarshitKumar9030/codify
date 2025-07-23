@@ -13,7 +13,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
-  Play, 
   Plus, 
   Users, 
   BookOpen, 
@@ -23,17 +22,18 @@ import {
   UserPlus,
   GraduationCap,
   Loader2,
-  AlertCircle,
-  CheckCircle,
-  XCircle,
   Bell,
-  MessageSquare
+  MessageSquare,
+  Upload,
+  FileText,
+  Download,
+  X
 } from "lucide-react";
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { ThemeToggle } from "@/components/theme-toggle";
 import Editor from "@monaco-editor/react";
 import { useTheme } from "next-themes";
+import InteractiveExecutionPanel from "@/components/InteractiveExecutionPanel";
+import FileEditor from "@/components/FileEditor";
 
 interface Classroom {
   id: string;
@@ -47,14 +47,6 @@ interface Classroom {
   isTeacher?: boolean;
 }
 
-interface ExecutionResult {
-  success: boolean;
-  output?: string;
-  error?: string;
-  executionTime?: number;
-  executionId?: string;
-}
-
 interface Assignment {
   id: string;
   title: string;
@@ -65,6 +57,12 @@ interface Assignment {
   dueDate?: string;
   points: number;
   createdAt: string;
+  attachedFiles?: Array<{
+    id: string;
+    name: string;
+    url: string;
+    size: number;
+  }>;
   classroom: {
     id: string;
     name: string;
@@ -85,7 +83,7 @@ interface Notification {
   type: string;
   title: string;
   message: string;
-  isRead: boolean;
+  read: boolean;
   createdAt: string;
   sender?: {
     id: string;
@@ -117,22 +115,6 @@ export default function Dashboard() {
   const [joinLoading, setJoinLoading] = useState(false);
 
   // Code execution state
-  const [code, setCode] = useState(`// Welcome to CodiFY!
-// Write your JavaScript code here and click Run to execute
-
-function greet(name) {
-  return \`Hello, \${name}! Welcome to CodiFY.\`;
-}
-
-console.log(greet("Developer"));
-console.log("Ready to start coding!");`);
-  const [language, setLanguage] = useState("javascript");
-  const [input, setInput] = useState("");
-  const [output, setOutput] = useState("");
-  const [executionLoading, setExecutionLoading] = useState(false);
-  const [executionError, setExecutionError] = useState<string | null>(null);
-  const [executionSuccess, setExecutionSuccess] = useState<boolean | null>(null);
-
   // Assignment state
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [createAssignmentOpen, setCreateAssignmentOpen] = useState(false);
@@ -144,9 +126,11 @@ console.log("Ready to start coding!");`);
     code: "",
     classroomId: "",
     dueDate: "",
-    points: 100
+    points: 100,
+    attachedFiles: [] as File[]
   });
   const [assignmentLoading, setAssignmentLoading] = useState(false);
+  const [fileUploading, setFileUploading] = useState(false);
 
   // Leaderboard state
   const [leaderboardData, setLeaderboardData] = useState<Array<{
@@ -166,33 +150,6 @@ console.log("Ready to start coding!");`);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notificationsPanelOpen, setNotificationsPanelOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-
-  // Update code template when language changes
-  useEffect(() => {
-    if (language === "python" && code.includes("// Welcome to CodiFY!")) {
-      setCode(`# Welcome to CodiFY!
-# Write your Python code here and click Run to execute
-
-def greet(name):
-    return f"Hello, {name}! Welcome to CodiFY."
-
-print(greet("Developer"))
-print("Ready to start coding!")
-
-# For input, use: input("Enter something: ")
-# Multiple inputs can be provided in the Input section below`);
-    } else if (language === "javascript" && code.includes("# Welcome to CodiFY!")) {
-      setCode(`// Welcome to CodiFY!
-// Write your JavaScript code here and click Run to execute
-
-function greet(name) {
-  return \`Hello, \${name}! Welcome to CodiFY.\`;
-}
-
-console.log(greet("Developer"));
-console.log("Ready to start coding!");`);
-    }
-  }, [language, code]);
 
   const fetchClassrooms = async () => {
     try {
@@ -226,7 +183,7 @@ console.log("Ready to start coding!");`);
       if (response.ok) {
         const data = await response.json();
         setNotifications(data.notifications || []);
-        setUnreadCount(data.notifications?.filter((n: Notification) => !n.isRead).length || 0);
+        setUnreadCount(data.notifications?.filter((n: Notification) => !n.read).length || 0);
       }
     } catch (error) {
       console.error("Failed to fetch notifications:", error);
@@ -262,20 +219,37 @@ console.log("Ready to start coding!");`);
 
   const markNotificationAsRead = async (notificationId: string) => {
     try {
-      const response = await fetch(`/api/notifications/${notificationId}`, {
+      const response = await fetch("/api/notifications", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isRead: true }),
+        body: JSON.stringify({ notificationIds: [notificationId] }),
       });
       
       if (response.ok) {
         setNotifications(prev => prev.map(n => 
-          n.id === notificationId ? { ...n, isRead: true } : n
+          n.id === notificationId ? { ...n, read: true } : n
         ));
         setUnreadCount(prev => Math.max(0, prev - 1));
       }
     } catch (error) {
       console.error("Failed to mark notification as read:", error);
+    }
+  };
+
+  const markAllNotificationsAsRead = async () => {
+    try {
+      const response = await fetch("/api/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ markAllAsRead: true }),
+      });
+      
+      if (response.ok) {
+        setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+        setUnreadCount(0);
+      }
+    } catch (error) {
+      console.error("Failed to mark all notifications as read:", error);
     }
   };
 
@@ -322,7 +296,8 @@ console.log("Ready to start coding!");`);
           code: "",
           classroomId: "",
           dueDate: "",
-          points: 100
+          points: 100,
+          attachedFiles: []
         });
         setCreateAssignmentOpen(false);
         fetchAssignments();
@@ -375,46 +350,6 @@ console.log("Ready to start coding!");`);
       alert("Network error: Failed to join classroom");
     } finally {
       setJoinLoading(false);
-    }
-  };
-
-  const executeCode = async () => {
-    if (!code.trim()) return;
-    
-    setExecutionLoading(true);
-    setOutput("");
-    setExecutionError(null);
-    setExecutionSuccess(null);
-    
-    try {
-      const response = await fetch("/api/execute", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          code,
-          language,
-          input,
-          timeout: 10,
-        }),
-      });
-
-      const result: ExecutionResult = await response.json();
-      
-      if (result.success) {
-        setOutput(result.output || "");
-        setExecutionSuccess(true);
-        setExecutionError(null);
-      } else {
-        setOutput("");
-        setExecutionError(result.error || "Unknown error occurred");
-        setExecutionSuccess(false);
-      }
-    } catch (error) {
-      setOutput("");
-      setExecutionError(error instanceof Error ? error.message : "Network error");
-      setExecutionSuccess(false);
-    } finally {
-      setExecutionLoading(false);
     }
   };
 
@@ -487,24 +422,7 @@ console.log("Ready to start coding!");`);
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={async () => {
-                              try {
-                                const response = await fetch('/api/notifications', {
-                                  method: 'PATCH',
-                                  headers: {
-                                    'Content-Type': 'application/json',
-                                  },
-                                  body: JSON.stringify({ markAllAsRead: true }),
-                                });
-                                
-                                if (response.ok) {
-                                  setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-                                  setUnreadCount(0);
-                                }
-                              } catch (error) {
-                                console.error('Error marking all as read:', error);
-                              }
-                            }}
+                            onClick={markAllNotificationsAsRead}
                             className="text-xs text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300"
                           >
                             Mark All Read
@@ -524,7 +442,7 @@ console.log("Ready to start coding!");`);
                           <div
                             key={notification.id}
                             className={`p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer transition-colors ${
-                              !notification.isRead ? 'bg-purple-50 dark:bg-purple-950/20' : ''
+                              !notification.read ? 'bg-purple-50 dark:bg-purple-950/20' : ''
                             }`}
                             onClick={() => markNotificationAsRead(notification.id)}
                           >
@@ -547,7 +465,7 @@ console.log("Ready to start coding!");`);
                                   {new Date(notification.createdAt).toLocaleString()}
                                 </p>
                               </div>
-                              {!notification.isRead && (
+                              {!notification.read && (
                                 <div className="flex-shrink-0">
                                   <div className="h-2 w-2 bg-purple-500 rounded-full"></div>
                                 </div>
@@ -579,10 +497,14 @@ console.log("Ready to start coding!");`);
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-fit lg:grid-cols-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+          <TabsList className="grid w-full grid-cols-5 lg:w-fit lg:grid-cols-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
             <TabsTrigger value="classrooms" className="flex items-center space-x-2 data-[state=active]:bg-purple-100 dark:data-[state=active]:bg-purple-900/30 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-300">
               <Users className="h-4 w-4" />
               <span>Classrooms</span>
+            </TabsTrigger>
+            <TabsTrigger value="files" className="flex items-center space-x-2 data-[state=active]:bg-purple-100 dark:data-[state=active]:bg-purple-900/30 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-300">
+              <FileText className="h-4 w-4" />
+              <span>Files</span>
             </TabsTrigger>
             <TabsTrigger value="code" className="flex items-center space-x-2 data-[state=active]:bg-purple-100 dark:data-[state=active]:bg-purple-900/30 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-300">
               <Code className="h-4 w-4" />
@@ -759,194 +681,27 @@ console.log("Ready to start coding!");`);
             </div>
           </TabsContent>
 
+          {/* Files Tab */}
+          <TabsContent value="files" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">File Manager & Editor</h1>
+            </div>
+
+            <FileEditor
+              userId={session?.user?.id}
+              classroomId={classrooms.length > 0 ? classrooms[0]?.id : undefined}
+              isTeacher={session?.user?.role === "TEACHER"}
+            />
+          </TabsContent>
+
           {/* Code Editor Tab */}
           <TabsContent value="code" className="space-y-6">
             <div className="flex justify-between items-center">
               <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">Code Editor</h1>
-              <div className="flex items-center space-x-3">
-                <Select value={language} onValueChange={setLanguage}>
-                  <SelectTrigger className="w-36 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
-                    <SelectItem value="javascript" className="text-zinc-900 dark:text-zinc-100 focus:bg-purple-100 dark:focus:bg-purple-900/30">JavaScript</SelectItem>
-                    <SelectItem value="python" className="text-zinc-900 dark:text-zinc-100 focus:bg-purple-100 dark:focus:bg-purple-900/30">Python</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button 
-                  onClick={executeCode} 
-                  disabled={executionLoading}
-                  className="bg-purple-600 hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-700 shadow-lg"
-                >
-                  {executionLoading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Running...
-                    </>
-                  ) : (
-                    <>
-                      <Play className="h-4 w-4 mr-2" />
-                      Run Code
-                    </>
-                  )}
-                </Button>
-              </div>
             </div>
 
-            {/* Execution Status Banner */}
-            {(executionSuccess !== null || executionError) && (
-              <div className={`p-4 rounded-lg border ${
-                executionError 
-                  ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800'
-                  : executionSuccess 
-                    ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800'
-                    : 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800'
-              }`}>
-                <div className="flex items-center gap-2">
-                  {executionError ? (
-                    <>
-                      <XCircle className="h-5 w-5 text-red-500" />
-                      <span className="font-medium text-red-800 dark:text-red-200">Execution Failed</span>
-                    </>
-                  ) : executionSuccess ? (
-                    <>
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                      <span className="font-medium text-green-800 dark:text-green-200">Code executed successfully!</span>
-                    </>
-                  ) : null}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setExecutionError(null);
-                      setExecutionSuccess(null);
-                    }}
-                    className="ml-auto h-6 w-6 p-0"
-                  >
-                    <XCircle className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Code Input */}
-              <Card className="bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                    <Code className="h-5 w-5" />
-                    Code
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
-                    <Editor
-                      height="350px"
-                      language={language}
-                      value={code}
-                      onChange={(value) => setCode(value || "")}
-                      theme={theme === "dark" ? "vs-dark" : "vs"}
-                      loading={
-                        <div className="flex items-center justify-center h-[350px] bg-zinc-50 dark:bg-zinc-900">
-                          <div className="flex items-center space-x-2">
-                            <Loader2 className="h-5 w-5 animate-spin text-purple-600" />
-                            <span className="text-sm text-zinc-600 dark:text-zinc-400">Loading editor...</span>
-                          </div>
-                        </div>
-                      }
-                      options={{
-                        minimap: { enabled: false },
-                        fontSize: 14,
-                        lineNumbers: "on",
-                        roundedSelection: false,
-                        scrollBeyondLastLine: false,
-                        automaticLayout: true,
-                        tabSize: 2,
-                        wordWrap: "on",
-                        suggest: {
-                          showKeywords: true,
-                          showSnippets: true,
-                          showFunctions: true,
-                          showVariables: true,
-                        },
-                        quickSuggestions: true,
-                        parameterHints: { enabled: true },
-                        hover: { enabled: true },
-                        bracketPairColorization: { enabled: true },
-                        foldingHighlight: true,
-                        selectionHighlight: true,
-                        occurrencesHighlight: "singleFile",
-                      }}
-                    />
-                  </div>
-                  {language === "python" && (
-                    <div className="space-y-2">
-                      <Label htmlFor="input" className="text-sm font-medium text-zinc-700 dark:text-zinc-300 flex items-center gap-2">
-                        <Play className="h-4 w-4" />
-                        Program Input (Optional)
-                      </Label>
-                      <Textarea
-                        id="input"
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        className="h-20 font-mono text-sm bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-500 dark:placeholder:text-zinc-400 focus:ring-purple-500 dark:focus:ring-purple-400"
-                        placeholder="Enter input for your program (each line will be passed as input)..."
-                      />
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                        Each line will be provided as input when your program calls input()
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Output */}
-              <Card className="bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                    <Play className="h-5 w-5" />
-                    Output
-                    {executionSuccess === true && (
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                    )}
-                    {executionSuccess === false && (
-                      <XCircle className="h-4 w-4 text-red-500" />
-                    )}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {executionError ? (
-                    <div className="min-h-[350px] bg-red-50 dark:bg-red-950/20 rounded-lg p-4 overflow-auto border border-red-200 dark:border-red-800">
-                      <div className="flex items-start gap-2">
-                        <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
-                        <div className="space-y-2">
-                          <h4 className="font-medium text-red-800 dark:text-red-200">Execution Error</h4>
-                          <pre className="text-sm text-red-700 dark:text-red-300 whitespace-pre-wrap font-mono">
-                            {executionError}
-                          </pre>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="min-h-[350px] bg-zinc-950 dark:bg-zinc-950 rounded-lg p-4 overflow-auto border border-zinc-800 dark:border-zinc-700">
-                      <SyntaxHighlighter
-                        language="text"
-                        style={oneDark}
-                        customStyle={{
-                          background: 'transparent',
-                          padding: 0,
-                          margin: 0,
-                          fontSize: '14px',
-                          lineHeight: '1.5',
-                        }}
-                      >
-                        {output || "// Output will appear here after running your code"}
-                      </SyntaxHighlighter>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+            {/* Interactive Execution Panel */}
+            <InteractiveExecutionPanel />
           </TabsContent>
 
           {/* Assignments Tab */}
@@ -1086,6 +841,104 @@ console.log("Ready to start coding!");`);
                         />
                       </div>
 
+                      {/* File Upload Section */}
+                      <div className="space-y-2">
+                        <Label htmlFor="fileUpload" className="text-sm font-medium text-zinc-700 dark:text-zinc-300 flex items-center gap-2">
+                          <Upload className="h-4 w-4" />
+                          Attach Files (Optional)
+                        </Label>
+                        <div className="border-2 border-dashed border-zinc-300 dark:border-zinc-600 rounded-lg p-4 hover:border-purple-400 dark:hover:border-purple-500 transition-colors">
+                          <input
+                            id="fileUpload"
+                            type="file"
+                            multiple
+                            accept=".js,.py,.txt,.md,.json,.html,.css,.java,.cpp,.c"
+                            onChange={(e) => {
+                              const files = Array.from(e.target.files || []);
+                              setNewAssignment(prev => ({ 
+                                ...prev, 
+                                attachedFiles: [...prev.attachedFiles, ...files] 
+                              }));
+                            }}
+                            className="hidden"
+                          />
+                          <label 
+                            htmlFor="fileUpload" 
+                            className="cursor-pointer flex flex-col items-center gap-2 text-center"
+                          >
+                            <Upload className="h-8 w-8 text-zinc-400" />
+                            <span className="text-sm text-zinc-600 dark:text-zinc-400">
+                              Click to upload files or drag and drop
+                            </span>
+                            <span className="text-xs text-zinc-500 dark:text-zinc-500">
+                              Supported: .js, .py, .txt, .md, .json, .html, .css, .java, .cpp, .c
+                            </span>
+                          </label>
+                        </div>
+                        
+                        {/* Display uploaded files */}
+                        {newAssignment.attachedFiles.length > 0 && (
+                          <div className="mt-3 space-y-2">
+                            <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                              Attached Files ({newAssignment.attachedFiles.length}):
+                            </span>
+                            <div className="space-y-1">
+                              {newAssignment.attachedFiles.map((file, index) => (
+                                <div key={index} className="flex items-center justify-between p-2 bg-zinc-50 dark:bg-zinc-800 rounded border">
+                                  <div className="flex items-center gap-2">
+                                    <FileText className="h-4 w-4 text-zinc-500" />
+                                    <span className="text-sm text-zinc-700 dark:text-zinc-300">{file.name}</span>
+                                    <span className="text-xs text-zinc-500">({(file.size / 1024).toFixed(1)} KB)</span>
+                                  </div>
+                                  <button
+                                    onClick={() => {
+                                      setNewAssignment(prev => ({
+                                        ...prev,
+                                        attachedFiles: prev.attachedFiles.filter((_, i) => i !== index)
+                                      }));
+                                    }}
+                                    className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              ))}
+                              
+                              {/* Load code from file button */}
+                              <div className="mt-2">
+                                <Label className="text-xs text-zinc-600 dark:text-zinc-400">
+                                  Load starter code from file:
+                                </Label>
+                                <div className="flex gap-2 mt-1">
+                                  {newAssignment.attachedFiles
+                                    .filter(file => file.name.endsWith('.js') || file.name.endsWith('.py'))
+                                    .map((file, index) => (
+                                      <button
+                                        key={index}
+                                        onClick={async () => {
+                                          setFileUploading(true);
+                                          try {
+                                            const text = await file.text();
+                                            setNewAssignment(prev => ({ ...prev, code: text }));
+                                          } catch (error) {
+                                            console.error('Error reading file:', error);
+                                          } finally {
+                                            setFileUploading(false);
+                                          }
+                                        }}
+                                        disabled={fileUploading}
+                                        className="text-xs px-2 py-1 bg-purple-100 hover:bg-purple-200 dark:bg-purple-900/30 dark:hover:bg-purple-900/50 text-purple-700 dark:text-purple-300 rounded border border-purple-300 dark:border-purple-600 transition-colors"
+                                      >
+                                        {fileUploading ? 'Loading...' : `Load ${file.name}`}
+                                      </button>
+                                    ))}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
                       <div className="flex gap-3 pt-4">
                         <Button 
                           onClick={createAssignment} 
@@ -1175,6 +1028,43 @@ console.log("Ready to start coding!");`);
                             </span>
                           </div>
                         )}
+                        
+                        {/* Display attached files if any */}
+                        {assignment.attachedFiles && assignment.attachedFiles.length > 0 && (
+                          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800/50">
+                            <div className="flex items-center gap-2 mb-2">
+                              <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                              <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                                Attached Files ({assignment.attachedFiles.length})
+                              </span>
+                            </div>
+                            <div className="space-y-1">
+                              {assignment.attachedFiles.slice(0, 3).map((file, index: number) => (
+                                <div key={index} className="flex items-center justify-between text-xs">
+                                  <span className="text-blue-600 dark:text-blue-400 truncate">{file.name}</span>
+                                  <button
+                                    onClick={() => {
+                                      // Download file functionality
+                                      const link = document.createElement('a');
+                                      link.href = file.url;
+                                      link.download = file.name;
+                                      link.click();
+                                    }}
+                                    className="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                                  >
+                                    <Download className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              ))}
+                              {assignment.attachedFiles.length > 3 && (
+                                <span className="text-xs text-blue-500 dark:text-blue-400">
+                                  +{assignment.attachedFiles.length - 3} more files
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        
                         <Button 
                           className="w-full bg-purple-600 hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-700"
                           onClick={() => router.push(`/assignments/${assignment.id}`)}

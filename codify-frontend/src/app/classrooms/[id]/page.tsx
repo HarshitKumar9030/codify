@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, Users, GraduationCap, MessageSquare, Send, User } from 'lucide-react';
+import Chat from '@/components/Chat';
 
 interface User {
   id: string;
@@ -329,6 +330,19 @@ export default function ClassroomDetailsPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Chat Section */}
+        <Card className="bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <MessageSquare className="h-5 w-5 text-green-600" />
+              <span>Classroom Chat</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Chat classroomId={classroomId} />
+          </CardContent>
+        </Card>
 
         {/* Classroom Stats */}
         <Card className="bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">

@@ -1,5 +1,6 @@
 import express from 'express';
 import FileManagerService from '../services/fileManagerService.js';
+import path from 'path';
 
 const router = express.Router();
 const fileManager = new FileManagerService();
@@ -155,6 +156,53 @@ router.post('/', async (req, res) => {
     }
   } catch (error) {
     console.error('Error in file operation route:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  }
+});
+
+// GET /api/files/download - Download a file
+router.get('/download', async (req, res) => {
+  try {
+    const { userId, path, classroomId, isTeacher, requestingUserId } = req.query;
+
+    if (!userId || !path) {
+      return res.status(400).json({
+        success: false,
+        error: 'User ID and path are required'
+      });
+    }
+
+    const effectiveRequestingUserId = requestingUserId || userId;
+    const hasAccess = await fileManager.validateUserAccess(
+      effectiveRequestingUserId,
+      userId,
+      isTeacher === 'true',
+      classroomId
+    );
+
+    if (!hasAccess) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied: You can only access your own files'
+      });
+    }
+
+    const result = await fileManager.downloadFile(userId, path);
+    
+    if (result.success) {
+      // Set headers for file download
+      const filename = path.split('/').pop() || 'download';
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Type', 'application/octet-stream');
+      res.send(result.content);
+    } else {
+      res.status(400).json(result);
+    }
+  } catch (error) {
+    console.error('Error in file download route:', error);
     res.status(500).json({
       success: false,
       error: 'Internal server error'

@@ -42,6 +42,11 @@ interface Submission {
   executionLog?: string;
   submittedAt: string;
   gradedAt?: string;
+  student?: {
+    id: string;
+    name: string;
+    email: string;
+  };
   attachments?: Array<{
     id: string;
     fileName: string;
@@ -462,7 +467,9 @@ export default function AssignmentPage() {
                       <div key={sub.id} className="border rounded-lg p-4 space-y-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-3">
-                            <span className="font-medium">Student ID: {sub.id.slice(-8)}</span>
+                            <span className="font-medium">
+                              {sub.student?.name || `Student ID: ${sub.id.slice(-8)}`}
+                            </span>
                             {getStatusBadge(sub.status)}
                             {sub.score !== undefined && (
                               <Badge variant="outline">{sub.score}/{assignment.points}</Badge>
@@ -719,11 +726,11 @@ export default function AssignmentPage() {
               </CardContent>
             </Card>
 
-            {/* Code Editor with Interactive Execution */}
+            {/* Code Solution with Interactive Execution */}
             <Card className="bg-white dark:bg-zinc-900">
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle>Your Solution</CardTitle>
+                  <CardTitle>Code & Run Your Solution</CardTitle>
                   <div className="flex space-x-2">
                     <Button
                       onClick={() => {
@@ -755,31 +762,16 @@ export default function AssignmentPage() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="border rounded-lg overflow-hidden">
-                  <Editor
-                    height="400px"
-                    language={assignment.language}
-                    value={code}
-                    onChange={(value) => setCode(value || '')}
-                    options={{
-                      minimap: { enabled: false },
-                      scrollBeyondLastLine: false,
-                      fontSize: 14,
-                    }}
-                    theme="vs-dark"
-                  />
-                </div>
-                
-                {/* Interactive Execution Panel */}
-                <div className="border rounded-lg">
-                  <InteractiveExecutionPanel
-                    code={code}
-                    language={assignment.language}
-                    userId={session?.user?.id}
-                    className="min-h-[200px]"
-                  />
-                </div>
+              <CardContent>
+                {/* Interactive Execution Panel with integrated editor */}
+                <InteractiveExecutionPanel
+                  code={code}
+                  language={assignment.language}
+                  onCodeChange={(newCode) => setCode(newCode)}
+                  userId={session?.user?.id}
+                  isAssignmentPage={true}
+                  className="h-[700px]"
+                />
               </CardContent>
             </Card>
               </div>

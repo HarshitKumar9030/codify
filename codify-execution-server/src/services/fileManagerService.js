@@ -49,8 +49,94 @@ class FileManagerService {
       await fs.access(userDir);
     } catch (error) {
       await fs.mkdir(userDir, { recursive: true });
+      // Create welcome files for new users
+      await this.createWelcomeFiles(userDir);
     }
     return userDir;
+  }
+
+  async createWelcomeFiles(userDir) {
+    try {
+      // Create a welcome README.md file
+      const readmePath = path.join(userDir, 'README.md');
+      const readmeContent = `# Welcome to CodiFY!
+
+This is your personal file space where you can:
+- Create and edit code files
+- Organize your projects in folders
+- Practice programming challenges
+- Store your assignment solutions
+
+## Getting Started
+
+1. Click the "+" button to create new files or folders
+2. Click on any file to view and edit it
+3. Use the Monaco Editor for syntax highlighting and code completion
+4. Your files are automatically saved when you edit them
+
+Happy coding! 🚀
+`;
+      
+      await fs.writeFile(readmePath, readmeContent, 'utf8');
+
+      // Create a sample Python file
+      const pythonPath = path.join(userDir, 'hello.py');
+      const pythonContent = `# Welcome to Python!
+# This is a sample Python file to get you started
+
+def greet(name):
+    """A simple greeting function"""
+    return f"Hello, {name}! Welcome to CodiFY!"
+
+if __name__ == "__main__":
+    # Try running this code!
+    message = greet("Student")
+    print(message)
+    
+    # You can modify this code and run it
+    print("\\nLet's do some basic math:")
+    a = 10
+    b = 5
+    print(f"{a} + {b} = {a + b}")
+    print(f"{a} * {b} = {a * b}")
+`;
+      
+      await fs.writeFile(pythonPath, pythonContent, 'utf8');
+
+      // Create a sample JavaScript file
+      const jsPath = path.join(userDir, 'hello.js');
+      const jsContent = `// Welcome to JavaScript!
+// This is a sample JavaScript file to get you started
+
+function greet(name) {
+    // A simple greeting function
+    return \`Hello, \${name}! Welcome to CodiFY!\`;
+}
+
+// Try running this code!
+const message = greet("Student");
+console.log(message);
+
+// You can modify this code and run it
+console.log("\\nLet's do some basic math:");
+const a = 10;
+const b = 5;
+console.log(\`\${a} + \${b} = \${a + b}\`);
+console.log(\`\${a} * \${b} = \${a * b}\`);
+
+// Example of working with arrays
+const numbers = [1, 2, 3, 4, 5];
+const doubled = numbers.map(n => n * 2);
+console.log("Original numbers:", numbers);
+console.log("Doubled numbers:", doubled);
+`;
+      
+      await fs.writeFile(jsPath, jsContent, 'utf8');
+
+      console.log(`📁 Created welcome files for new user in ${userDir}`);
+    } catch (error) {
+      console.error('Error creating welcome files:', error);
+    }
   }
 
   validatePath(filePath) {
@@ -139,6 +225,13 @@ class FileManagerService {
       // Ensure the path is within user directory
       if (!fullPath.startsWith(userDir)) {
         throw new Error('Access denied: Path outside user directory');
+      }
+
+      // Check if file exists before attempting to read
+      try {
+        await fs.access(fullPath);
+      } catch (error) {
+        throw new Error(`File not found: ${filePath}`);
       }
 
       const content = await fs.readFile(fullPath, 'utf8');
@@ -284,6 +377,44 @@ class FileManagerService {
       };
     } catch (error) {
       console.error('Error creating directory:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  async downloadFile(userId, filePath) {
+    try {
+      const userDir = await this.ensureUserDirectory(userId);
+      const safePath = this.validatePath(filePath);
+      const fullPath = path.join(userDir, safePath);
+
+      // Ensure the path is within user directory
+      if (!fullPath.startsWith(userDir)) {
+        throw new Error('Access denied: Path outside user directory');
+      }
+
+      // Check if file exists
+      try {
+        await fs.access(fullPath);
+      } catch (error) {
+        throw new Error(`File not found: ${filePath}`);
+      }
+
+      // Read file as buffer for download
+      const content = await fs.readFile(fullPath);
+      const stats = await fs.stat(fullPath);
+
+      return {
+        success: true,
+        content,
+        path: filePath,
+        size: stats.size,
+        modified: stats.mtime.toISOString()
+      };
+    } catch (error) {
+      console.error('Error downloading file:', error);
       return {
         success: false,
         error: error.message

@@ -90,12 +90,8 @@ app.use('/api/health', healthRoutes);
 app.use('/api/execute', codeExecutionRoutes);
 app.use('/api/files', fileManagerRoutes);
 
-app.get('/api/ping', (req, res) => {
-  res.json({ 
-    status: 'pong', 
-    timestamp: Date.now(),
-    server: 'execution-server'
-  });
+app.get('/api/ping', cors(), (req, res) => {
+  res.status(200).json({ success: true, timestamp: Date.now() });
 });
 
 const wsExecutionServer = new WebSocketExecutionServer(server);
