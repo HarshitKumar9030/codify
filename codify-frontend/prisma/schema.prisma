@@ -134,16 +134,18 @@ model Assignment {
 }
 
 model Submission {
-  id           String           @id @default(auto()) @map("_id") @db.ObjectId
-  code         String
-  status       SubmissionStatus @default(PENDING)
-  score        Int?             // 0-100
-  feedback     String?
-  executionLog String?          // JSON string of execution results
-  studentId    String           @db.ObjectId
-  assignmentId String           @db.ObjectId
-  submittedAt  DateTime         @default(now())
-  gradedAt     DateTime?
+  id               String           @id @default(auto()) @map("_id") @db.ObjectId
+  code             String
+  status           SubmissionStatus @default(PENDING)
+  score            Int?             // 0-100
+  feedback         String?
+  executionLog     String?          // JSON string of execution results
+  studentId        String           @db.ObjectId
+  assignmentId     String           @db.ObjectId
+  submittedAt      DateTime         @default(now())
+  gradedAt         DateTime?
+  submissionCount  Int              @default(1) // Track how many times submitted
+  attachedFiles    String?          // JSON string of file paths relative to user directory
 
   // Relations
   student    User       @relation(fields: [studentId], references: [id], onDelete: Cascade)

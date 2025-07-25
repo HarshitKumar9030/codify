@@ -3,10 +3,13 @@
 import { useState } from "react";
 import { signIn, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useAuthRedirect } from "@/hooks/useAuthRedirect";
+import AuthLoading from "@/components/AuthLoading";
 import Link from "next/link";
 import { Eye, EyeOff, LogIn, ArrowLeft } from "lucide-react";
 
 export default function SignIn() {
+  const { isAuthenticated, isLoading: authLoading } = useAuthRedirect();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -43,6 +46,22 @@ export default function SignIn() {
       setIsLoading(false);
     }
   };
+
+  // Show loading screen while checking authentication
+  if (authLoading) {
+    return <AuthLoading 
+      message="Checking authentication..." 
+      className="min-h-screen bg-gradient-to-b from-zinc-50 to-white dark:from-zinc-950 dark:to-zinc-900" 
+    />;
+  }
+
+  // Don't render signin form if user is authenticated (they'll be redirected)
+  if (isAuthenticated) {
+    return <AuthLoading 
+      message="Redirecting to dashboard..." 
+      className="min-h-screen bg-gradient-to-b from-zinc-50 to-white dark:from-zinc-950 dark:to-zinc-900" 
+    />;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-zinc-50 to-white dark:from-zinc-950 dark:to-zinc-900 flex items-center justify-center px-4">

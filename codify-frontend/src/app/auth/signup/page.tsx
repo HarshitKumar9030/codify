@@ -2,10 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuthRedirect } from "@/hooks/useAuthRedirect";
+import AuthLoading from "@/components/AuthLoading";
 import Link from "next/link";
 import { Eye, EyeOff, UserPlus, ArrowLeft, Users, BookOpen } from "lucide-react";
 
 export default function SignUp() {
+  const { isAuthenticated, isLoading: authLoading } = useAuthRedirect();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -50,6 +53,22 @@ export default function SignUp() {
       [e.target.name]: e.target.value,
     });
   };
+
+  // Show loading screen while checking authentication
+  if (authLoading) {
+    return <AuthLoading 
+      message="Checking authentication..." 
+      className="min-h-screen bg-gradient-to-b from-zinc-50 to-white dark:from-zinc-950 dark:to-zinc-900" 
+    />;
+  }
+
+  // Don't render signup form if user is authenticated (they'll be redirected)
+  if (isAuthenticated) {
+    return <AuthLoading 
+      message="Redirecting to dashboard..." 
+      className="min-h-screen bg-gradient-to-b from-zinc-50 to-white dark:from-zinc-950 dark:to-zinc-900" 
+    />;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-zinc-50 to-white dark:from-zinc-950 dark:to-zinc-900 flex items-center justify-center px-4">

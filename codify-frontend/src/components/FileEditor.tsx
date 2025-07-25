@@ -59,6 +59,7 @@ export default function FileEditor({
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
   const [newFileName, setNewFileName] = useState('');
   const [newFolderName, setNewFolderName] = useState('');
+  const [selectedFileTemplate, setSelectedFileTemplate] = useState<string>('');
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
   const [students, setStudents] = useState<Array<{id: string, name: string}>>([]);
   
@@ -80,10 +81,204 @@ export default function FileEditor({
     setTimeout(() => setShowErrorMessage({show: false, message: ''}), 5000);
   }, []);
 
-  const showPrompt = useCallback((title: string, placeholder: string, onConfirm: (value: string) => void) => {
-    setPromptValue('');
-    setShowPromptDialog({show: true, title, placeholder, onConfirm});
-  }, []);
+  // File templates
+  const fileTemplates = [
+    {
+      name: 'Python Script',
+      extension: '.py',
+      icon: '🐍',
+      content: `#!/usr/bin/env python3
+"""
+Created by: [Your Name]
+Date: ${new Date().toLocaleDateString()}
+Description: [Brief description of the script]
+"""
+
+def main():
+    """Main function - entry point of the program."""
+    print("Hello, World!")
+    # Your code here
+    pass
+
+if __name__ == "__main__":
+    main()
+`
+    },
+    {
+      name: 'JavaScript File',
+      extension: '.js',
+      icon: '⚡',
+      content: `/**
+ * Created by: [Your Name]
+ * Date: ${new Date().toLocaleDateString()}
+ * Description: [Brief description of the script]
+ */
+
+// Main function
+function main() {
+    console.log("Hello, World!");
+    // Your code here
+}
+
+// Export for use in other modules
+module.exports = { main };
+
+// Run if this file is executed directly
+if (require.main === module) {
+    main();
+}
+`
+    },
+    {
+      name: 'HTML Page',
+      extension: '.html',
+      icon: '🌐',
+      content: `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Web Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to My Web Page</h1>
+        <p>This is a starter HTML template with basic styling.</p>
+        
+        <script>
+            console.log("Page loaded successfully!");
+        </script>
+    </div>
+</body>
+</html>
+`
+    },
+    {
+      name: 'CSS Stylesheet',
+      extension: '.css',
+      icon: '🎨',
+      content: `/*
+ * Stylesheet created: ${new Date().toLocaleDateString()}
+ * Description: [Brief description]
+ */
+
+/* Reset and base styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background-color: #fff;
+}
+
+/* Container */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* Typography */
+h1, h2, h3 {
+    margin-bottom: 1rem;
+    line-height: 1.2;
+}
+
+p {
+    margin-bottom: 1rem;
+}
+
+/* Add your custom styles here */
+`
+    },
+    {
+      name: 'JSON Data',
+      extension: '.json',
+      icon: '📋',
+      content: `{
+  "name": "My Project",
+  "version": "1.0.0",
+  "description": "A sample JSON data file",
+  "created": "${new Date().toISOString()}",
+  "data": {
+    "items": [],
+    "settings": {
+      "enabled": true,
+      "theme": "default"
+    }
+  }
+}
+`
+    },
+    {
+      name: 'Markdown Document',
+      extension: '.md',
+      icon: '📝',
+      content: `# Project Title
+
+Created: ${new Date().toLocaleDateString()}
+
+## Description
+
+Brief description of your project or document.
+
+## Getting Started
+
+### Prerequisites
+
+- List any prerequisites here
+
+### Installation
+
+1. Step one
+2. Step two
+3. Step three
+
+## Usage
+
+Explain how to use your project.
+
+\`\`\`python
+# Example code block
+print("Hello, World!")
+\`\`\`
+
+## Features
+
+- [ ] Feature 1
+- [ ] Feature 2
+- [x] Completed feature
+
+## Contributing
+
+Instructions for contributing to the project.
+
+## License
+
+License information.
+`
+    }
+  ];
 
   const createFile = useCallback(async () => {
     if (!newFileName.trim()) return;
@@ -92,13 +287,20 @@ export default function FileEditor({
       const effectiveUserId = isTeacher ? selectedStudentId : (targetUserId || userId);
       const filePath = currentPath === '/' ? `/${newFileName}` : `${currentPath}/${newFileName}`;
       
+      // Get template content based on selection
+      let fileContent = '';
+      if (selectedFileTemplate) {
+        const template = fileTemplates.find(t => t.name === selectedFileTemplate);
+        fileContent = template?.content || '';
+      }
+      
       const response = await fetch('/api/files', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: effectiveUserId,
           path: filePath,
-          content: '',
+          content: fileContent,
           action: 'create',
           requestingUserId: userId,
           isTeacher,
@@ -109,6 +311,7 @@ export default function FileEditor({
       const data = await response.json();
       if (data.success) {
         setNewFileName('');
+        setSelectedFileTemplate('');
         setIsCreateFileOpen(false);
         await loadFiles(currentPath);
         showSuccess(`File "${newFileName}" created successfully!`);
@@ -118,7 +321,7 @@ export default function FileEditor({
     } catch {
       showError('Error creating file');
     }
-  }, [newFileName, isTeacher, selectedStudentId, targetUserId, userId, currentPath, classroomId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [newFileName, selectedFileTemplate, fileTemplates, isTeacher, selectedStudentId, targetUserId, userId, currentPath, classroomId, showError, showSuccess]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveFile = useCallback(async () => {
     if (!editingFile) return;
@@ -151,7 +354,6 @@ export default function FileEditor({
     }
   }, [editingFile, isTeacher, selectedStudentId, targetUserId, userId, classroomId, showError, showSuccess]);
 
-  // Enhanced keyboard shortcuts with Alt+S for save (to avoid browser conflicts)
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       // Alt+S to save
@@ -168,20 +370,36 @@ export default function FileEditor({
       if (event.altKey && (event.key === 'n' || event.key === 'N')) {
         event.preventDefault();
         event.stopPropagation();
-        showPrompt('Create New File', 'Enter file name (e.g., solution.py)', (filename) => {
-          if (filename.trim()) {
-            setNewFileName(filename.trim());
-            createFile();
-          }
-        });
+        setIsCreateFileOpen(true);
         return false;
       }
       
-      // Escape to close editor
+      // Alt+F to create new folder
+      if (event.altKey && (event.key === 'f' || event.key === 'F')) {
+        event.preventDefault();
+        event.stopPropagation();
+        setIsCreateFolderOpen(true);
+        return false;
+      }
+      
+      // Escape to close editor or modals
       if (event.key === 'Escape') {
         event.preventDefault();
         if (editingFile) {
           setEditingFile(null);
+          event.stopPropagation();
+          return false;
+        }
+        if (isCreateFileOpen) {
+          setIsCreateFileOpen(false);
+          setSelectedFileTemplate('');
+          setNewFileName('');
+          event.stopPropagation();
+          return false;
+        }
+        if (isCreateFolderOpen) {
+          setIsCreateFolderOpen(false);
+          setNewFolderName('');
           event.stopPropagation();
           return false;
         }
@@ -195,7 +413,7 @@ export default function FileEditor({
       document.removeEventListener('keydown', handleKeyDown, true);
       window.removeEventListener('keydown', handleKeyDown, true);
     };
-  }, [editingFile, saveFile, createFile, showPrompt]);
+  }, [editingFile, saveFile, isCreateFileOpen, isCreateFolderOpen]);
 
   // Load students for teacher view
   useEffect(() => {
@@ -437,6 +655,33 @@ export default function FileEditor({
     }
   }, [selectedStudentId, loadFiles, isTeacher, userId]);
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Ctrl+N or Cmd+N to create new file
+      if ((event.ctrlKey || event.metaKey) && event.key === 'n') {
+        event.preventDefault();
+        setIsCreateFileOpen(true);
+      }
+      
+      // Ctrl+Shift+N or Cmd+Shift+N to create new folder
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'N') {
+        event.preventDefault();
+        setIsCreateFolderOpen(true);
+      }
+      
+      // Escape to close modals
+      if (event.key === 'Escape') {
+        setIsCreateFileOpen(false);
+        setIsCreateFolderOpen(false);
+        setShowHelpDialog(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
     <>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
@@ -469,60 +714,201 @@ export default function FileEditor({
               </Button>
               <Dialog open={isCreateFileOpen} onOpenChange={setIsCreateFileOpen}>
                 <DialogTrigger asChild>
-                  <Button size="sm" variant="outline">
+                  <Button size="sm" variant="outline" title="Create new file (Ctrl+N)">
                     <Plus className="h-4 w-4 mr-1" />
                     File
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="max-w-2xl">
                   <DialogHeader>
-                    <DialogTitle>Create New File</DialogTitle>
+                    <DialogTitle className="flex items-center">
+                      <Plus className="w-5 h-5 mr-2 text-purple-600" />
+                      Create New File
+                    </DialogTitle>
                   </DialogHeader>
-                  <div className="space-y-4">
+                  <div className="space-y-6">
+                    {/* Template Selection */}
                     <div>
+                      <Label className="text-sm font-medium">Choose a Template (Optional)</Label>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedFileTemplate('');
+                            setNewFileName('');
+                          }}
+                          className={`p-3 border rounded-lg text-left transition-all hover:bg-zinc-50 dark:hover:bg-zinc-800 ${
+                            !selectedFileTemplate 
+                              ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20' 
+                              : 'border-zinc-200 dark:border-zinc-700'
+                          }`}
+                        >
+                          <div className="text-lg mb-1">📄</div>
+                          <div className="font-medium text-sm">Empty File</div>
+                          <div className="text-xs text-zinc-500">Start from scratch</div>
+                        </button>
+                        {fileTemplates.map((template) => (
+                          <button
+                            key={template.name}
+                            type="button"
+                            onClick={() => {
+                              setSelectedFileTemplate(template.name);
+                              // Smart extension handling
+                              if (newFileName.trim()) {
+                                // Remove any existing extension and add the template's extension
+                                const nameWithoutExt = newFileName.replace(/\.[^/.]+$/, '');
+                                setNewFileName(nameWithoutExt + template.extension);
+                              } else {
+                                // If no filename, suggest a default name with extension
+                                const defaultName = template.name.toLowerCase().replace(/\s+/g, '-');
+                                setNewFileName(defaultName + template.extension);
+                              }
+                            }}
+                            className={`p-3 border rounded-lg text-left transition-all hover:bg-zinc-50 dark:hover:bg-zinc-800 ${
+                              selectedFileTemplate === template.name 
+                                ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20' 
+                                : 'border-zinc-200 dark:border-zinc-700'
+                            }`}
+                          >
+                            <div className="text-lg mb-1">{template.icon}</div>
+                            <div className="font-medium text-sm">{template.name}</div>
+                            <div className="text-xs text-zinc-500">{template.extension}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* File Name Input */}
+                    <div className="space-y-2">
                       <Label htmlFor="fileName">File Name</Label>
                       <Input
                         id="fileName"
                         value={newFileName}
                         onChange={(e) => setNewFileName(e.target.value)}
-                        placeholder="e.g., solution.py"
+                        placeholder={selectedFileTemplate ? `my-file${fileTemplates.find(t => t.name === selectedFileTemplate)?.extension || ''}` : 'e.g., solution.py'}
+                        className="mt-1"
+                        onKeyPress={(e) => e.key === 'Enter' && newFileName.trim() && createFile()}
                       />
+                      {selectedFileTemplate && (
+                        <div className="text-xs text-zinc-500 bg-blue-50 dark:bg-blue-900/20 p-2 rounded">
+                          ✨ Creating: <strong>{fileTemplates.find(t => t.name === selectedFileTemplate)?.name}</strong> with starter content
+                        </div>
+                      )}
+                      
+                      {/* File name validation */}
+                      {newFileName && (
+                        <div className="text-xs space-y-1">
+                          {newFileName.includes(' ') && (
+                            <div className="text-amber-600 dark:text-amber-400">
+                              ⚠️ Consider using underscores or hyphens instead of spaces
+                            </div>
+                          )}
+                          {newFileName.length > 50 && (
+                            <div className="text-red-600 dark:text-red-400">
+                              ❌ File name is too long (max 50 characters)
+                            </div>
+                          )}
+                          {!/^[a-zA-Z0-9._-]+$/.test(newFileName) && newFileName.trim() && (
+                            <div className="text-red-600 dark:text-red-400">
+                              ❌ File name contains invalid characters
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <div className="flex justify-end space-x-2">
-                      <Button variant="outline" onClick={() => setIsCreateFileOpen(false)}>
-                        Cancel
-                      </Button>
-                      <Button onClick={createFile}>Create</Button>
+
+                    {/* Current Path Info */}
+                    <div className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-lg">
+                      <div className="text-xs text-zinc-500 mb-1">File will be created in:</div>
+                      <div className="font-mono text-sm">{currentPath === '/' ? '/' : currentPath}/</div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex justify-between items-center">
+                      <div className="text-xs text-zinc-500">
+                        💡 Tip: Press Enter to create quickly
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button 
+                          variant="outline" 
+                          onClick={() => {
+                            setIsCreateFileOpen(false);
+                            setSelectedFileTemplate('');
+                            setNewFileName('');
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button 
+                          onClick={createFile}
+                          disabled={
+                            !newFileName.trim() || 
+                            newFileName.length > 50 || 
+                            (newFileName.length > 0 && !/^[a-zA-Z0-9._-]+$/.test(newFileName))
+                          }
+                          className="bg-purple-600 hover:bg-purple-700"
+                        >
+                          <Plus className="w-4 h-4 mr-1" />
+                          Create File
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </DialogContent>
               </Dialog>
               <Dialog open={isCreateFolderOpen} onOpenChange={setIsCreateFolderOpen}>
                 <DialogTrigger asChild>
-                  <Button size="sm" variant="outline">
+                  <Button size="sm" variant="outline" title="Create new folder (Ctrl+Shift+N)">
                     <FolderPlus className="h-4 w-4 mr-1" />
                     Folder
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="max-w-md">
                   <DialogHeader>
-                    <DialogTitle>Create New Folder</DialogTitle>
+                    <DialogTitle className="flex items-center">
+                      <FolderPlus className="w-5 h-5 mr-2 text-purple-600" />
+                      Create New Folder
+                    </DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4">
+                    {/* Folder Name Input */}
                     <div>
                       <Label htmlFor="folderName">Folder Name</Label>
                       <Input
                         id="folderName"
                         value={newFolderName}
                         onChange={(e) => setNewFolderName(e.target.value)}
-                        placeholder="e.g., assignments"
+                        placeholder="e.g., my-project"
+                        className="mt-1"
+                        onKeyPress={(e) => e.key === 'Enter' && newFolderName.trim() && createFolder()}
                       />
                     </div>
+
+                    {/* Current Path Info */}
+                    <div className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-lg">
+                      <div className="text-xs text-zinc-500 mb-1">Folder will be created in:</div>
+                      <div className="font-mono text-sm">{currentPath === '/' ? '/' : currentPath}/</div>
+                    </div>
+
+                    {/* Actions */}
                     <div className="flex justify-end space-x-2">
-                      <Button variant="outline" onClick={() => setIsCreateFolderOpen(false)}>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setIsCreateFolderOpen(false);
+                          setNewFolderName('');
+                        }}
+                      >
                         Cancel
                       </Button>
-                      <Button onClick={createFolder}>Create</Button>
+                      <Button 
+                        onClick={createFolder}
+                        disabled={!newFolderName.trim()}
+                        className="bg-purple-600 hover:bg-purple-700"
+                      >
+                        <FolderPlus className="w-4 h-4 mr-1" />
+                        Create Folder
+                      </Button>
                     </div>
                   </div>
                 </DialogContent>
@@ -568,7 +954,7 @@ export default function FileEditor({
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
             </div>
           ) : (
-            <div className="space-y-1 max-h-96 overflow-y-auto">
+            <div className="space-y-1 max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-600 scrollbar-track-transparent hover:scrollbar-thumb-zinc-400 dark:hover:scrollbar-thumb-zinc-500">
               {files.length === 0 ? (
                 <p className="text-center text-zinc-500 py-8">No files in this directory</p>
               ) : (
@@ -708,9 +1094,10 @@ export default function FileEditor({
           <div>
             <h4 className="font-semibold mb-2">⌨️ Keyboard Shortcuts:</h4>
             <div className="space-y-1 text-zinc-600 dark:text-zinc-400">
-              <div>🔸 <kbd className="px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded">Alt+S</kbd> - Save current file</div>
-              <div>🔸 <kbd className="px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded">Alt+N</kbd> - Create new file</div>
-              <div>🔸 <kbd className="px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded">Escape</kbd> - Close file editor</div>
+              <div>🔸 <kbd className="px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded">Ctrl+N</kbd> - Create new file</div>
+              <div>🔸 <kbd className="px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded">Ctrl+Shift+N</kbd> - Create new folder</div>
+              <div>🔸 <kbd className="px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded">Escape</kbd> - Close modals</div>
+              <div>🔸 <kbd className="px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded">Enter</kbd> - Confirm in dialogs</div>
             </div>
           </div>
           <div>
@@ -722,6 +1109,27 @@ export default function FileEditor({
               <div>🔸 .html files → HTML intellisense</div>
               <div>🔸 .css files → CSS intellisense</div>
               <div>🔸 .md files → Markdown intellisense</div>
+            </div>
+          </div>
+          <div>
+            <h4 className="font-semibold mb-2">📄 File Templates:</h4>
+            <div className="space-y-1 text-zinc-600 dark:text-zinc-400">
+              <div>🔸 Python Script with main function</div>
+              <div>🔸 JavaScript with module exports</div>
+              <div>🔸 HTML5 page with styling</div>
+              <div>🔸 CSS with reset and base styles</div>
+              <div>🔸 JSON data structure</div>
+              <div>🔸 Markdown documentation</div>
+            </div>
+          </div>
+          <div>
+            <h4 className="font-semibold mb-2">✨ Features:</h4>
+            <div className="space-y-1 text-zinc-600 dark:text-zinc-400">
+              <div>🔸 Rich file templates with starter code</div>
+              <div>🔸 Simple folder creation</div>
+              <div>🔸 File name validation</div>
+              <div>🔸 Smart extension handling</div>
+              <div>🔸 Dark/light theme support</div>
             </div>
           </div>
         </div>

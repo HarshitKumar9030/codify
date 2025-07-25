@@ -8,8 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Editor } from '@monaco-editor/react';
-import { ArrowLeft, Clock, User, BookOpen, CheckCircle, XCircle, AlertCircle, Trophy, Star } from 'lucide-react';
+import { ArrowLeft, Clock, User, BookOpen, CheckCircle, XCircle, AlertCircle, Trophy, Star, FileText, Calendar, AlertTriangle, Info } from 'lucide-react';
 import FileManager from '@/components/FileManager';
 import InteractiveExecutionPanel from '@/components/InteractiveExecutionPanel';
 
@@ -54,6 +55,12 @@ interface Submission {
     fileSize: number;
     uploadedAt: string;
   }>;
+  attachedFiles?: Array<{
+    name: string;
+    path: string;
+    size: number;
+    modified: string;
+  }>;
 }
 
 export default function AssignmentPage() {
@@ -73,6 +80,15 @@ export default function AssignmentPage() {
   const [gradingScore, setGradingScore] = useState<number>(0);
   const [gradingFeedback, setGradingFeedback] = useState<string>('');
   const [submissionFilter, setSubmissionFilter] = useState<'all' | 'pending' | 'graded' | 'rejected'>('pending');
+  const [submissionCount, setSubmissionCount] = useState<number>(0);
+  const [showLeaderboard, setShowLeaderboard] = useState<boolean>(false);
+  const [showNotificationModal, setShowNotificationModal] = useState<boolean>(false);
+  const [notificationData, setNotificationData] = useState<{
+    type: 'success' | 'warning' | 'error' | 'info';
+    title: string;
+    message: string;
+    icon?: React.ReactNode;
+  } | null>(null);
   const [leaderboard, setLeaderboard] = useState<Array<{
     userId: string;
     userName: string;
@@ -80,6 +96,12 @@ export default function AssignmentPage() {
     completedAssignments: number;
     averageScore: number;
   }>>([]);
+
+  // Helper function to show notification modals
+  const showNotification = (type: 'success' | 'warning' | 'error' | 'info', title: string, message: string, icon?: React.ReactNode) => {
+    setNotificationData({ type, title, message, icon });
+    setShowNotificationModal(true);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -110,20 +132,46 @@ export default function AssignmentPage() {
             const submissionData = await submissionResponse.json();
             setSubmission(submissionData.submission);
             setCode(submissionData.submission?.code || assignmentData.assignment.code);
+            
+            // Count user's submissions for this assignment
+            const countResponse = await fetch(`/api/assignments/${assignmentId}/submissions`);
+            if (countResponse.ok) {
+              const allSubmissionsData = await countResponse.json();
+              const userSubmissions = allSubmissionsData.submissions.filter(
+                (sub: Submission) => sub.student?.email === session?.user?.email
+              );
+              setSubmissionCount(userSubmissions.length);
+            }
           } else {
             setCode(assignmentData.assignment.code);
           }
         }
       } catch (error) {
         console.error('Error fetching assignment details:', error);
-        alert('Failed to load assignment details');
+        showNotification('error', 'Loading Error', 'Failed to load assignment details. Please refresh the page and try again.');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
+    if (session?.user?.email) {
+      fetchData();
+    }
   }, [assignmentId, session?.user?.email]);
+
+  // Check due date when assignment data is available
+  useEffect(() => {
+    if (assignment?.dueDate && new Date() > new Date(assignment.dueDate) && !isTeacher) {
+      setTimeout(() => {
+        showNotification(
+          'warning',
+          'Assignment Past Due',
+          `This assignment was due on ${new Date(assignment.dueDate!).toLocaleDateString()}. Late submissions may not be accepted or may receive reduced credit.`,
+          <Calendar className="h-5 w-5" />
+        );
+      }, 1000);
+    }
+  }, [assignment?.dueDate, isTeacher]);
 
   const fetchAssignmentDetails = async () => {
     try {
@@ -178,16 +226,34 @@ export default function AssignmentPage() {
         }),
       });
 
+      const data = await response.json();
+      
       if (!response.ok) {
-        throw new Error('Failed to submit assignment');
+        showNotification('error', 'Submission Failed', data.error || 'Failed to submit assignment. Please try again.');
+        return;
       }
 
-      const data = await response.json();
       setSubmission(data.submission);
-      alert('Assignment submitted successfully!');
+      setSubmissionCount(data.submissionCount || 0);
+      
+      // Show success message with submission info
+      const remainingSubmissions = 2 - (data.submissionCount || 0);
+      let message = 'Your assignment has been submitted successfully!';
+      if (remainingSubmissions > 0) {
+        message += ` You have ${remainingSubmissions} submission${remainingSubmissions !== 1 ? 's' : ''} remaining.`;
+      } else {
+        message += ' You have reached the maximum submission limit for this assignment.';
+      }
+      
+      showNotification(
+        'success', 
+        'Assignment Submitted', 
+        message,
+        <CheckCircle className="h-5 w-5" />
+      );
     } catch (error) {
       console.error('Error submitting assignment:', error);
-      alert('Failed to submit assignment');
+      showNotification('error', 'Network Error', 'Failed to submit assignment due to network issues. Please check your connection and try again.');
     } finally {
       setSubmitting(false);
     }
@@ -215,10 +281,16 @@ export default function AssignmentPage() {
       // Refresh submissions and leaderboard
       fetchAssignmentDetails();
       fetchLeaderboard();
-      alert('Submission graded successfully!');
+      
+      showNotification(
+        'success',
+        'Submission Graded',
+        `Successfully graded submission with status: ${status.replace('_', ' ')} and score: ${score} points.`,
+        <CheckCircle className="h-5 w-5" />
+      );
     } catch (error) {
       console.error('Error grading submission:', error);
-      alert('Failed to grade submission');
+      showNotification('error', 'Grading Failed', 'Failed to grade submission. Please try again.');
     }
   };
 
@@ -230,6 +302,7 @@ export default function AssignmentPage() {
       if (response.ok) {
         const data = await response.json();
         setLeaderboard(data.leaderboard || []);
+        setShowLeaderboard(true);
       }
     } catch (error) {
       console.error('Error fetching leaderboard:', error);
@@ -254,7 +327,7 @@ export default function AssignmentPage() {
 
   const saveToFile = async (filename: string) => {
     if (!filename.trim() || !code.trim()) {
-      alert('Please provide a filename and code to save');
+      showNotification('warning', 'Missing Information', 'Please provide both a filename and code content to save.');
       return;
     }
 
@@ -271,13 +344,18 @@ export default function AssignmentPage() {
 
       const data = await response.json();
       if (data.success) {
-        alert(`File saved as ${filename}`);
+        showNotification(
+          'success',
+          'File Saved',
+          `Your code has been saved as "${filename}" in your workspace.`,
+          <CheckCircle className="h-5 w-5" />
+        );
       } else {
-        alert(`Failed to save file: ${data.message}`);
+        showNotification('error', 'Save Failed', `Failed to save file: ${data.message}`);
       }
     } catch (error) {
       console.error('Error saving file:', error);
-      alert('Error saving file');
+      showNotification('error', 'Network Error', 'Failed to save file due to network issues. Please try again.');
     }
   };
 
@@ -358,9 +436,20 @@ export default function AssignmentPage() {
                   <span>{assignment.classroom.teacher.name}</span>
                 </div>
                 {assignment.dueDate && (
-                  <div className="flex items-center space-x-1">
+                  <div className={`flex items-center space-x-1 ${
+                    new Date() > new Date(assignment.dueDate) 
+                      ? 'text-red-600 dark:text-red-400' 
+                      : 'text-zinc-600 dark:text-zinc-400'
+                  }`}>
                     <Clock className="h-4 w-4" />
-                    <span>Due: {new Date(assignment.dueDate).toLocaleDateString()}</span>
+                    <span>
+                      Due: {new Date(assignment.dueDate).toLocaleDateString()}
+                      {new Date() > new Date(assignment.dueDate) && (
+                        <span className="ml-2 px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">
+                          PAST DUE
+                        </span>
+                      )}
+                    </span>
                   </div>
                 )}
                 <Badge variant="outline">{assignment.points} points</Badge>
@@ -485,6 +574,38 @@ export default function AssignmentPage() {
                             <p className="text-sm">{sub.feedback}</p>
                           </div>
                         )}
+
+                        {/* Attached Files Display */}
+                        {sub.attachedFiles && (() => {
+                          try {
+                            const files = typeof sub.attachedFiles === 'string' 
+                              ? JSON.parse(sub.attachedFiles) 
+                              : sub.attachedFiles;
+                            if (files && files.length > 0) {
+                              return (
+                                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
+                                  <div className="flex items-center mb-2">
+                                    <FileText className="h-4 w-4 mr-2 text-blue-600" />
+                                    <span className="font-medium text-sm text-blue-800 dark:text-blue-200">
+                                      Attached Files ({files.length})
+                                    </span>
+                                  </div>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-32 overflow-y-auto">
+                                    {files.map((file: {name: string; size: number; path: string; modified: string}, index: number) => (
+                                      <div key={index} className="flex items-center text-xs text-blue-700 dark:text-blue-300 bg-white dark:bg-blue-900/30 p-2 rounded border">
+                                        <span className="truncate flex-1">{file.name}</span>
+                                        <span className="ml-2 text-blue-500">{(file.size / 1024).toFixed(1)}KB</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            }
+                          } catch {
+                            return null;
+                          }
+                          return null;
+                        })()}
 
                         <div className="border rounded overflow-hidden">
                           <Editor
@@ -711,6 +832,14 @@ export default function AssignmentPage() {
                     <h3 className="font-semibold mb-2">Submission Status</h3>
                     <div className="space-y-2">
                       {getStatusBadge(submission.status)}
+                      <div className="flex items-center justify-between text-sm">
+                        <span>Submissions: {submissionCount}/2</span>
+                        {submissionCount >= 2 && (
+                          <Badge variant="destructive" className="text-xs">
+                            Submission limit reached
+                          </Badge>
+                        )}
+                      </div>
                       {submission.score !== undefined && (
                         <div className="text-sm">Score: {submission.score}/{assignment.points}</div>
                       )}
@@ -726,7 +855,6 @@ export default function AssignmentPage() {
               </CardContent>
             </Card>
 
-            {/* Code Solution with Interactive Execution */}
             <Card className="bg-white dark:bg-zinc-900">
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -744,18 +872,35 @@ export default function AssignmentPage() {
                       💾 Save File
                     </Button>
                     <Button
-                      onClick={submitAssignment}
+                      onClick={() => {
+                        if (submissionCount >= 2) {
+                          showNotification(
+                            'info',
+                            'Submission Limit Reached',
+                            'You have already submitted this assignment 2 times, which is the maximum allowed. If you need to make changes, please contact your instructor.',
+                            <Info className="h-5 w-5" />
+                          );
+                        } else {
+                          submitAssignment();
+                        }
+                      }}
                       disabled={submitting || !code.trim()}
-                      className="bg-purple-600 hover:bg-purple-700"
+                      className={`${submissionCount >= 2 
+                        ? 'bg-gray-400 cursor-pointer' 
+                        : 'bg-purple-600 hover:bg-purple-700'}`}
                     >
                       {submitting ? (
                         <>
                           <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
                           Submitting...
                         </>
+                      ) : submissionCount >= 2 ? (
+                        <>
+                          Submission Limit Reached
+                        </>
                       ) : (
                         <>
-                          📝 Submit
+                          Submit ({2 - submissionCount} remaining)
                         </>
                       )}
                     </Button>
@@ -763,7 +908,6 @@ export default function AssignmentPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                {/* Interactive Execution Panel with integrated editor */}
                 <InteractiveExecutionPanel
                   code={code}
                   language={assignment.language}
@@ -791,6 +935,162 @@ export default function AssignmentPage() {
             </TabsContent>
           </Tabs>
         )}
+
+        {/* Enhanced Notification Modal */}
+        <Dialog open={showNotificationModal} onOpenChange={setShowNotificationModal}>
+          <DialogContent className="max-w-md">
+            <div className="text-center space-y-4">
+              {notificationData && (
+                <>
+                  <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center ${
+                    notificationData.type === 'success' ? 'bg-green-100 text-green-600' :
+                    notificationData.type === 'warning' ? 'bg-yellow-100 text-yellow-600' :
+                    notificationData.type === 'error' ? 'bg-red-100 text-red-600' :
+                    'bg-blue-100 text-blue-600'
+                  }`}>
+                    {notificationData.icon || (
+                      notificationData.type === 'success' ? <CheckCircle className="h-8 w-8" /> :
+                      notificationData.type === 'warning' ? <AlertTriangle className="h-8 w-8" /> :
+                      notificationData.type === 'error' ? <XCircle className="h-8 w-8" /> :
+                      <Info className="h-8 w-8" />
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <h3 className={`text-xl font-semibold ${
+                      notificationData.type === 'success' ? 'text-green-800' :
+                      notificationData.type === 'warning' ? 'text-yellow-800' :
+                      notificationData.type === 'error' ? 'text-red-800' :
+                      'text-blue-800'
+                    }`}>
+                      {notificationData.title}
+                    </h3>
+                    
+                    <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                      {notificationData.message}
+                    </p>
+                  </div>
+                  
+                  <div className="pt-4">
+                    <Button 
+                      onClick={() => setShowNotificationModal(false)}
+                      className={`w-full ${
+                        notificationData.type === 'success' ? 'bg-green-600 hover:bg-green-700' :
+                        notificationData.type === 'warning' ? 'bg-yellow-600 hover:bg-yellow-700' :
+                        notificationData.type === 'error' ? 'bg-red-600 hover:bg-red-700' :
+                        'bg-blue-600 hover:bg-blue-700'
+                      }`}
+                    >
+                      {notificationData.type === 'success' ? 'Great!' :
+                       notificationData.type === 'warning' ? 'I Understand' :
+                       notificationData.type === 'error' ? 'Try Again' :
+                       'Got It'}
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Enhanced Leaderboard Modal */}
+        <Dialog open={showLeaderboard} onOpenChange={setShowLeaderboard}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
+            <DialogHeader>
+              <DialogTitle className="flex items-center text-2xl font-bold">
+                <Trophy className="h-6 w-6 mr-2 text-yellow-500" />
+                🏆 Classroom Leaderboard - {assignment?.classroom.name}
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="mt-6">
+              {leaderboard.length === 0 ? (
+                <div className="text-center py-12">
+                  <Trophy className="h-16 w-16 mx-auto mb-4 text-zinc-300" />
+                  <p className="text-zinc-500 text-lg">No submissions yet</p>
+                  <p className="text-zinc-400 text-sm">Students will appear here after submitting assignments</p>
+                </div>
+              ) : (
+                <div className="space-y-4 max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-600">
+                  {leaderboard.map((student, index) => {
+                    const isTopThree = index < 3;
+                    const medals = ['🥇', '🥈', '🥉'];
+                    const bgColors = [
+                      'bg-gradient-to-r from-yellow-50 to-yellow-100 border-yellow-200',
+                      'bg-gradient-to-r from-gray-50 to-gray-100 border-gray-200', 
+                      'bg-gradient-to-r from-orange-50 to-orange-100 border-orange-200'
+                    ];
+                    
+                    return (
+                      <div 
+                        key={student.userId}
+                        className={`p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-lg ${
+                          isTopThree 
+                            ? `${bgColors[index]} shadow-md transform hover:scale-[1.02]` 
+                            : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-750'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4">
+                            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900">
+                              <span className="text-xl font-bold">
+                                {isTopThree ? medals[index] : `#${index + 1}`}
+                              </span>
+                            </div>
+                            
+                            <div>
+                              <h3 className="font-semibold text-lg text-zinc-900 dark:text-zinc-100">
+                                {student.userName || 'Anonymous Student'}
+                              </h3>
+                              <div className="flex items-center space-x-4 mt-1">
+                                <span className="text-sm text-zinc-600 dark:text-zinc-400">
+                                  📚 {student.completedAssignments} completed
+                                </span>
+                                <span className="text-sm text-zinc-600 dark:text-zinc-400">
+                                  📈 {student.averageScore}% avg
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="text-right">
+                            <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">
+                              {student.totalPoints}
+                            </div>
+                            <div className="text-sm text-zinc-500 dark:text-zinc-400">
+                              points
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {isTopThree && (
+                          <div className="mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-600">
+                            <div className="flex items-center justify-center space-x-2">
+                              <Star className="h-4 w-4 text-yellow-500" />
+                              <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                                {index === 0 ? 'Outstanding Performance! 🎉' : 
+                                 index === 1 ? 'Excellent Work! 🌟' : 
+                                 'Great Job! 💪'}
+                              </span>
+                              <Star className="h-4 w-4 text-yellow-500" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              
+              <div className="mt-6 pt-4 border-t border-zinc-200 dark:border-zinc-700">
+                <div className="flex items-center justify-between text-sm text-zinc-600 dark:text-zinc-400">
+                  <span>🏅 Total Students: {leaderboard.length}</span>
+                  <span>📊 Updated: {new Date().toLocaleDateString()}</span>
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

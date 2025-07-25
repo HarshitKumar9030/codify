@@ -3,10 +3,13 @@
 import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useAuthRedirect } from "@/hooks/useAuthRedirect";
+import AuthLoading from "@/components/AuthLoading";
 import Navigation from "@/components/layout/Navigation";
 import { Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
 
 export default function Login() {
+  const { isAuthenticated, isLoading: authLoading } = useAuthRedirect();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -69,6 +72,16 @@ export default function Login() {
       [e.target.name]: e.target.value,
     });
   };
+
+  // Show loading screen while checking authentication
+  if (authLoading) {
+    return <AuthLoading message="Checking authentication..." />;
+  }
+
+  // Don't render login form if user is authenticated (they'll be redirected)
+  if (isAuthenticated) {
+    return <AuthLoading message="Redirecting to dashboard..." />;
+  }
 
   return (
     <div className="min-h-screen bg-white dark:bg-zinc-950">
