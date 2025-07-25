@@ -60,7 +60,6 @@ export async function POST(request: NextRequest) {
 
     // Create unique filename
     const timestamp = Date.now();
-    const extension = path.extname(file.name);
     const filename = `${session.user.id}_${timestamp}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
     
     // Create upload directory if it doesn't exist

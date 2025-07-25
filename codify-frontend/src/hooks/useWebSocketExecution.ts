@@ -180,8 +180,10 @@ export function useWebSocketExecution() {
 
     manager.send({
       type: 'execute',
-      data: code,
-      language: language
+      payload: {
+        code: code,
+        language: language
+      }
     });
   }, []);
 
@@ -208,7 +210,9 @@ export function useWebSocketExecution() {
 
     manager.send({
       type: 'input',
-      input: input
+      payload: {
+        input: input
+      }
     });
   }, []);
 

@@ -90,17 +90,30 @@ export async function GET(request: NextRequest) {
 
     // Mark messages as read
     const unreadMessageIds = messages
-      .filter(msg => msg.readBy.length === 0 && msg.senderId !== session.user.id)
-      .map(msg => msg.id);
+      .filter((msg) => msg.readBy.length === 0 && msg.senderId !== session.user.id)
+      .map((msg) => msg.id);
 
     if (unreadMessageIds.length > 0) {
-      await prisma.messageRead.createMany({
-        data: unreadMessageIds.map(messageId => ({
-          messageId,
-          userId: session.user.id
-        })),
-        skipDuplicates: true
+      // Check for existing read records to avoid duplicates
+      const existingReads = await prisma.messageRead.findMany({
+        where: {
+          userId: session.user.id,
+          messageId: { in: unreadMessageIds }
+        },
+        select: { messageId: true }
       });
+
+      const existingMessageIds = existingReads.map(read => read.messageId);
+      const newMessageIds = unreadMessageIds.filter(id => !existingMessageIds.includes(id));
+
+      if (newMessageIds.length > 0) {
+        await prisma.messageRead.createMany({
+          data: newMessageIds.map(messageId => ({
+            messageId,
+            userId: session.user.id
+          }))
+        });
+      }
     }
 
     return NextResponse.json({

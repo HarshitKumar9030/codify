@@ -1,5 +1,24 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Folder, File, Plus, Trash2, Download } from 'lucide-react';
+import { Folder, File, Plus, Trash2, Download, Users, User, Save, Sparkles } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Editor } from '@monaco-editor/react';
+import { useTheme } from 'next-themes';
 
 interface FileItem {
   name: string;
@@ -7,6 +26,12 @@ interface FileItem {
   path: string;
   size?: number;
   modified?: string;
+}
+
+interface StudentItem {
+  id: string;
+  name: string;
+  isTeacher?: boolean;
 }
 
 interface FileManagerProps {
@@ -28,6 +53,7 @@ export default function FileManager({
   isTeacher = false,
   targetUserId 
 }: FileManagerProps) {
+  const { theme } = useTheme();
   const [files, setFiles] = useState<FileItem[]>([]);
   const [currentPath, setCurrentPath] = useState('/');
   const [loading, setLoading] = useState(false);
@@ -35,36 +61,123 @@ export default function FileManager({
   const [createType, setCreateType] = useState<'file' | 'directory'>('file');
   const [newName, setNewName] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState<string>(targetUserId || userId || '');
-  const [students, setStudents] = useState<Array<{id: string, name: string}>>([]);
+  const [students, setStudents] = useState<Array<StudentItem>>([]);
   const [viewingFile, setViewingFile] = useState<{path: string, content: string, name: string} | null>(null);
   const [showFileViewer, setShowFileViewer] = useState(false);
   const [studentsLoading, setStudentsLoading] = useState(false);
+  const [isModified, setIsModified] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
+  // Language detection utility
+  const getLanguageFromExtension = (filename: string): string => {
+    const extension = filename.split('.').pop()?.toLowerCase();
+    
+    switch (extension) {
+      case 'py': return 'python';
+      case 'js': return 'javascript';
+      case 'jsx': return 'javascript';
+      case 'ts': return 'typescript';
+      case 'tsx': return 'typescript';
+      case 'html': return 'html';
+      case 'css': return 'css';
+      case 'scss': return 'scss';
+      case 'sass': return 'sass';
+      case 'less': return 'less';
+      case 'json': return 'json';
+      case 'md': return 'markdown';
+      case 'xml': return 'xml';
+      case 'yaml': case 'yml': return 'yaml';
+      case 'sql': return 'sql';
+      case 'php': return 'php';
+      case 'java': return 'java';
+      case 'c': return 'c';
+      case 'cpp': case 'cc': case 'cxx': return 'cpp';
+      case 'cs': return 'csharp';
+      case 'go': return 'go';
+      case 'rs': return 'rust';
+      case 'rb': return 'ruby';
+      case 'sh': case 'bash': return 'shell';
+      case 'dockerfile': return 'dockerfile';
+      default: return 'plaintext';
+    }
+  };
 
   // Load students for teacher view
   useEffect(() => {
     if (isTeacher && classroomId) {
+      setStudentsLoading(true);
       fetch(`/api/classroom/${classroomId}/students`)
         .then(res => res.json())
         .then(data => {
-          if (data.success) {
-            setStudents([
-              { id: userId || '', name: 'My Files' },
-              ...data.students.map((s: {id: string, name: string}) => ({ id: s.id, name: s.name }))
-            ]);
+          if (data.success && Array.isArray(data.students)) {
+            const studentsList = [];
+            
+            if (userId) {
+              studentsList.push({ 
+                id: userId, 
+                name: 'My Files (Teacher)', 
+                isTeacher: true 
+              });
+            }
+            
+            // Add students from API response
+            studentsList.push(...data.students.map((s: {id: string, name: string}) => ({ 
+              id: s.id, 
+              name: s.name,
+              isTeacher: false
+            })));
+            
+            console.log('👥 Setting students list:', studentsList);
+            setStudents(studentsList);
+            
+            // Set default selection logic
+            if (studentsList.length > 0) {
+              if (targetUserId && studentsList.some(s => s.id === targetUserId)) {
+                setSelectedStudentId(targetUserId);
+              } else if (!selectedStudentId || !studentsList.some(s => s.id === selectedStudentId)) {
+                // Default to first student (not teacher files) if available
+                const firstStudent = studentsList.find(s => !s.isTeacher);
+                setSelectedStudentId(firstStudent ? firstStudent.id : studentsList[0].id);
+              }
+            }
+          } else {
+            console.error('❌ Failed to load students:', data.message);
+            
+            // Fallback to teacher's files if no students
+            if (userId) {
+              setStudents([{ id: userId, name: 'My Files (Teacher)', isTeacher: true }]);
+              setSelectedStudentId(userId);
+            }
           }
         })
-        .catch(console.error);
+        .catch(error => {
+          console.error('❌ Error loading students:', error);
+        })
+        .finally(() => setStudentsLoading(false));
+    } else if (!isTeacher && userId) {
+      // For non-teachers, just set their own ID
+      setSelectedStudentId(userId);
     }
-  }, [isTeacher, classroomId, userId]);
+  }, [isTeacher, classroomId, userId, targetUserId, selectedStudentId]);
 
   const loadFiles = useCallback(async (path: string = '/') => {
     setLoading(true);
     try {
       // Determine which user's files to load
       const effectiveUserId = isTeacher ? selectedStudentId : (targetUserId || userId);
+      
+      // Add validation to prevent requests with no user ID
+      if (!effectiveUserId) {
+        console.error('❌ No user ID available for file listing');
+        setFiles([]);
+        setLoading(false);
+        return;
+      }
+      
+    
       const params = new URLSearchParams();
       params.append('path', path);
-      if (effectiveUserId) params.append('userId', effectiveUserId);
+      params.append('userId', effectiveUserId); // Always include userId
       if (userId) params.append('requestingUserId', userId);
       params.append('isTeacher', isTeacher.toString());
       if (classroomId) params.append('classroomId', classroomId);
@@ -72,20 +185,25 @@ export default function FileManager({
       const response = await fetch(`/api/files?${params}`);
       const data = await response.json();
       
+      console.log('📁 Files API response:', data);
+      
       if (data.success) {
         setFiles(data.files || []);
         setCurrentPath(path);
       } else {
         console.error('Failed to load files:', data.message);
+        // Show user-friendly error
+        setFiles([]);
       }
     } catch (error) {
       console.error('Error loading files:', error);
+      setFiles([]);
     } finally {
       setLoading(false);
     }
   }, [userId, classroomId, isTeacher, targetUserId, selectedStudentId]);
 
-  // Fetch students for teacher's dropdown
+  // Fetch students 
   const fetchStudents = useCallback(async () => {
     if (!isTeacher || !classroomId) return;
     
@@ -103,7 +221,7 @@ export default function FileManager({
     }
   }, [isTeacher, classroomId]);
 
-  // Load files when component mounts or selectedStudentId changes
+  // Load files when mounts
   useEffect(() => {
     loadFiles('/');
   }, [loadFiles, selectedStudentId]);
@@ -114,6 +232,230 @@ export default function FileManager({
       fetchStudents();
     }
   }, [fetchStudents, isTeacher, classroomId]);
+
+  // Helper function to get starter content for file types
+  const getStarterContent = (fileName: string): string => {
+    const extension = fileName.split('.').pop()?.toLowerCase();
+    
+    switch (extension) {
+      case 'py':
+        return `# ${fileName}
+# Python starter code
+
+def main():
+    print("Hello from ${fileName}!")
+    # Write your code here
+
+if __name__ == "__main__":
+    main()
+`;
+      case 'js':
+        return `// ${fileName}
+// JavaScript starter code
+
+function main() {
+    console.log("Hello from ${fileName}!");
+    // Write your code here
+}
+
+main();
+`;
+      case 'html':
+        return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${fileName.replace('.html', '')}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to ${fileName}</h1>
+        <p>Start building your web page here!</p>
+        
+        <script>
+            console.log("Hello from ${fileName}!");
+        </script>
+    </div>
+</body>
+</html>
+`;
+      case 'md':
+        return `# ${fileName.replace('.md', '')}
+
+Welcome to your new markdown file!
+
+## Getting Started
+
+You can write documentation, notes, or anything else here using Markdown syntax.
+
+### Features
+- **Bold text**
+- *Italic text*
+- \`Code snippets\`
+- [Links](https://example.com)
+
+Happy writing! ✨
+`;
+      default:
+        return `// ${fileName}
+// Write your code here
+
+console.log("Hello, World!");
+`;
+    }
+  };
+
+  // Emmet expansions for HTML
+  const emmetExpansions: Record<string, string> = {
+    'html:5': `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    
+</body>
+</html>`,
+    'div': '<div></div>',
+    'div.container': '<div class="container"></div>',
+    'div#main': '<div id="main"></div>',
+    'p': '<p></p>',
+    'h1': '<h1></h1>',
+    'h2': '<h2></h2>',
+    'h3': '<h3></h3>',
+    'ul>li*3': `<ul>
+    <li></li>
+    <li></li>
+    <li></li>
+</ul>`,
+    'nav>ul>li*3>a': `<nav>
+    <ul>
+        <li><a href=""></a></li>
+        <li><a href=""></a></li>
+        <li><a href=""></a></li>
+    </ul>
+</nav>`,
+    'form>input+button': `<form>
+    <input type="text">
+    <button type="submit">Submit</button>
+</form>`,
+  };
+
+  // Expand Emmet abbreviation
+  const expandEmmet = (text: string): string => {
+    return emmetExpansions[text] || text;
+  };
+
+  // Save file function
+  const saveCurrentFile = useCallback(async () => {
+    if (!viewingFile) return;
+    
+    setSaveStatus('saving');
+    try {
+      const effectiveUserId = isTeacher ? selectedStudentId : (targetUserId || userId);
+      const saveParams = new URLSearchParams();
+      if (effectiveUserId) saveParams.append('userId', effectiveUserId);
+      if (userId) saveParams.append('requestingUserId', userId);
+      if (classroomId) saveParams.append('classroomId', classroomId);
+      if (isTeacher) saveParams.append('isTeacher', 'true');
+      
+      const response = await fetch('/api/files/content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...Object.fromEntries(saveParams),
+          path: viewingFile.path,
+          content: viewingFile.content
+        })
+      });
+      
+      if (response.ok) {
+        setSaveStatus('saved');
+        setIsModified(false);
+        setTimeout(() => setSaveStatus('idle'), 2000);
+        // Refresh file list to update size
+        await loadFiles(currentPath);
+      } else {
+        setSaveStatus('error');
+        setTimeout(() => setSaveStatus('idle'), 2000);
+      }
+    } catch (error) {
+      console.error('Error saving file:', error);
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    }
+  }, [viewingFile, isTeacher, selectedStudentId, targetUserId, userId, classroomId, currentPath, loadFiles]);
+
+  // Enhanced keyboard shortcuts with Alt keys (to avoid browser conflicts)
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Alt+S to save (avoids browser default)
+      if (event.altKey && (event.key === 's' || event.key === 'S')) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (viewingFile) {
+          saveCurrentFile();
+        }
+        return false;
+      }
+      
+      // Alt+N to create new file
+      if (event.altKey && (event.key === 'n' || event.key === 'N')) {
+        event.preventDefault();
+        event.stopPropagation();
+        setShowCreateModal(true);
+        return false;
+      }
+      
+      // Escape to close modal/viewer
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        let handled = false;
+        
+        if (showFileViewer) {
+          setShowFileViewer(false);
+          setViewingFile(null);
+          handled = true;
+        }
+        if (showCreateModal) {
+          setShowCreateModal(false);
+          setNewName('');
+          handled = true;
+        }
+        
+        if (handled) {
+          event.stopPropagation();
+          return false;
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown, true);
+    window.addEventListener('keydown', handleKeyDown, true);
+    
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown, true);
+      window.removeEventListener('keydown', handleKeyDown, true);
+    };
+  }, [viewingFile, showFileViewer, showCreateModal, saveCurrentFile]);
 
   const handleFileClick = async (file: FileItem) => {
     if (file.type === 'directory') {
@@ -135,19 +477,114 @@ export default function FileManager({
         
         if (data.success) {
           const content = data.content || '';
-          setViewingFile({
-            path: file.path,
-            content,
-            name: file.name
-          });
+          
+          // If file is empty, offer to add starter content
+          if (content.trim() === '' && file.size === 0) {
+            const shouldAddStarter = window.confirm(
+              `The file "${file.name}" is empty. Would you like to add starter code?`
+            );
+            
+            if (shouldAddStarter) {
+              const starterContent = getStarterContent(file.name);
+              // Save starter content to file
+              try {
+                const saveParams = new URLSearchParams();
+                if (effectiveUserId) saveParams.append('userId', effectiveUserId);
+                saveParams.append('path', file.path);
+                if (userId) saveParams.append('requestingUserId', userId);
+                if (classroomId) saveParams.append('classroomId', classroomId);
+                if (isTeacher) saveParams.append('isTeacher', 'true');
+                
+                await fetch('/api/files/content', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    ...Object.fromEntries(saveParams),
+                    content: starterContent
+                  })
+                });
+                
+                setViewingFile({
+                  path: file.path,
+                  content: starterContent,
+                  name: file.name
+                });
+                onFileSelect(file.path, starterContent);
+                // Refresh file list to update size
+                loadFiles(currentPath);
+              } catch (error) {
+                console.error('Error saving starter content:', error);
+                setViewingFile({
+                  path: file.path,
+                  content,
+                  name: file.name
+                });
+                onFileSelect(file.path, content);
+              }
+            } else {
+              setViewingFile({
+                path: file.path,
+                content,
+                name: file.name
+              });
+              onFileSelect(file.path, content);
+            }
+          } else {
+            setViewingFile({
+              path: file.path,
+              content,
+              name: file.name
+            });
+            onFileSelect(file.path, content);
+            setIsModified(false); // Reset modified state when loading a file
+          }
           setShowFileViewer(true);
-          onFileSelect(file.path, content);
         } else {
           console.error('Failed to load file:', data.error || data.message);
         }
       } catch (error) {
         console.error('Error loading file content:', error);
       }
+    }
+  };
+
+  const handleAddStarterContent = async (file: FileItem) => {
+    try {
+      const effectiveUserId = isTeacher ? selectedStudentId : (targetUserId || userId);
+      const starterContent = getStarterContent(file.name);
+      
+      const saveParams = new URLSearchParams();
+      if (effectiveUserId) saveParams.append('userId', effectiveUserId);
+      if (userId) saveParams.append('requestingUserId', userId);
+      if (classroomId) saveParams.append('classroomId', classroomId);
+      if (isTeacher) saveParams.append('isTeacher', 'true');
+      
+      const response = await fetch('/api/files/content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...Object.fromEntries(saveParams),
+          path: file.path,
+          content: starterContent
+        })
+      });
+      
+      if (response.ok) {
+        // Refresh file list to update size
+        await loadFiles(currentPath);
+        // Load the file with starter content
+        setViewingFile({
+          path: file.path,
+          content: starterContent,
+          name: file.name
+        });
+        setShowFileViewer(true);
+        onFileSelect(file.path, starterContent);
+      } else {
+        console.error('Failed to add starter content');
+      }
+    } catch (error) {
+      console.error('Error adding starter content:', error);
     }
   };
 
@@ -176,7 +613,7 @@ export default function FileManager({
         userId: effectiveUserId,
         path: filePath,
         action: createType === 'file' ? 'create' : 'mkdir',
-        content: createType === 'file' ? '' : undefined, // Empty content for new files
+        content: createType === 'file' ? getStarterContent(newName) : undefined, // Add starter content for new files
         requestingUserId: userId,
         isTeacher,
         classroomId
@@ -280,11 +717,8 @@ export default function FileManager({
     { name: 'List Operations', content: 'numbers = [1, 2, 3, 4, 5]\nsquared = [x**2 for x in numbers]\nprint("Original:", numbers)\nprint("Squared:", squared)' }
   ];
 
-  const [showExamples, setShowExamples] = useState(false);
-
   const loadExample = (example: typeof codeExamples[0]) => {
     onFileSelect(`example_${example.name.toLowerCase().replace(/\s+/g, '_')}.py`, example.content);
-    setShowExamples(false);
   };
 
   return (
@@ -294,89 +728,245 @@ export default function FileManager({
         <div className="flex items-center space-x-2">
           <Folder className="w-5 h-5 text-purple-500" />
           <span className="font-medium text-zinc-800 dark:text-zinc-200">Files</span>
+          
+          {/* Keyboard Shortcuts Help */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                <span className="text-xs">⌨️</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-[280px]">
+              <DropdownMenuLabel>Keyboard Shortcuts</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={() => {
+                  if (viewingFile) {
+                    saveCurrentFile();
+                  } else {
+                    alert('No file is currently open for editing');
+                  }
+                }}
+              >
+                <span className="font-mono">Alt + S</span>
+                <DropdownMenuShortcut>Save current file</DropdownMenuShortcut>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowCreateModal(true)}>
+                <span className="font-mono">Alt + N</span>
+                <DropdownMenuShortcut>Create new file</DropdownMenuShortcut>
+              </DropdownMenuItem>
+              <DropdownMenuItem disabled>
+                <span className="font-mono">Escape</span>
+                <DropdownMenuShortcut>Close modals</DropdownMenuShortcut>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs">Emmet Support</DropdownMenuLabel>
+              <DropdownMenuItem disabled>
+                <span className="font-mono text-xs">html:5</span>
+                <DropdownMenuShortcut>HTML5 template</DropdownMenuShortcut>
+              </DropdownMenuItem>
+              <DropdownMenuItem disabled>
+                <span className="font-mono text-xs">div.container</span>
+                <DropdownMenuShortcut>Div with class</DropdownMenuShortcut>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         <div className="flex items-center space-x-3">
-          {/* Student selector for teachers */}
-          {isTeacher && students.length > 0 && (
-            <select
-              value={selectedStudentId}
-              onChange={(e) => setSelectedStudentId(e.target.value)}
-              className="px-3 py-2 bg-white dark:bg-zinc-800 border border-purple-200 dark:border-purple-700 rounded-lg text-sm font-medium text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-            >
-              {students.map(student => (
-                <option key={student.id} value={student.id}>
-                  {student.name}
-                </option>
-              ))}
-            </select>
+          {isTeacher && (
+            studentsLoading ? (
+              <div className="flex items-center space-x-2 px-4 py-2 bg-white dark:bg-zinc-800 border border-purple-200 dark:border-purple-700 rounded-lg">
+                <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                <span className="text-sm text-zinc-600 dark:text-zinc-400">Loading students...</span>
+              </div>
+            ) : students.length > 0 ? (
+              <Select 
+                value={selectedStudentId} 
+                onValueChange={(value) => {
+                  setSelectedStudentId(value);
+                  setTimeout(() => {
+                    loadFiles('/');
+                  }, 100);
+                }}
+              >
+                <SelectTrigger className="min-w-[200px]">
+                  <div className="flex items-center space-x-2">
+                    <div className={`p-1.5 rounded ${selectedStudentId === userId ? 'bg-purple-100 dark:bg-purple-900/30' : 'bg-blue-100 dark:bg-blue-900/30'}`}>
+                      {selectedStudentId === userId ? (
+                        <User className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                      ) : (
+                        <Users className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                      )}
+                    </div>
+                    <SelectValue placeholder="Select User" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent className="w-[280px]">
+                  {students.map((student) => (
+                    <SelectItem
+                      key={student.id}
+                      value={student.id}
+                      className="py-3"
+                    >
+                      <div className="flex items-center space-x-3 w-full">
+                        <div className={`p-2 rounded-lg ${
+                          student.id === userId 
+                            ? 'bg-purple-500' 
+                            : 'bg-blue-500'
+                        }`}>
+                          {student.id === userId ? (
+                            <User className="h-4 w-4 text-white" />
+                          ) : (
+                            <Users className="h-4 w-4 text-white" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium">{student.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {student.id === userId ? '👨‍💼 Teacher Files' : '👩‍🎓 Student Files'}
+                            {student.id === userId && (
+                              <span className="ml-2 px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded text-xs">
+                                You
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {selectedStudentId === student.id && (
+                          <div className="h-2 w-2 bg-green-500 rounded-full" />
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                  <div className="px-3 py-2 text-xs text-muted-foreground text-center border-t">
+                    {students.length} {students.length === 1 ? 'workspace' : 'workspaces'} available
+                  </div>
+                </SelectContent>
+              </Select>
+            ) : null
           )}
           
           {/* Code Examples Dropdown */}
-          <div className="relative">
-            <button
-              onClick={() => setShowExamples(!showExamples)}
-              className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg hover:from-indigo-600 hover:to-purple-600 transition-all duration-200 shadow-md hover:shadow-lg text-sm font-medium"
-            >
-              <span>📚 Examples</span>
-            </button>
-            
-            {showExamples && (
-              <div className="absolute right-0 top-12 w-64 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-xl z-10 overflow-hidden">
-                <div className="p-3 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border-b border-zinc-200 dark:border-zinc-700">
-                  <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Code Examples</h3>
-                </div>
-                <div className="max-h-64 overflow-y-auto">
-                  {codeExamples.map((example, index) => (
-                    <button
-                      key={index}
-                      onClick={() => loadExample(example)}
-                      className="w-full text-left px-4 py-3 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors border-b border-zinc-100 dark:border-zinc-700 last:border-b-0"
-                    >
-                      <div className="font-medium text-sm text-zinc-800 dark:text-zinc-200">{example.name}</div>
-                      <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 font-mono truncate">{example.content.split('\n')[0]}...</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="default" className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600">
+                <Sparkles className="w-4 h-4 mr-2" />
+                Examples
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[280px]">
+              <DropdownMenuLabel>Code Examples</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {codeExamples.map((example, index) => (
+                <DropdownMenuItem
+                  key={index}
+                  onClick={() => loadExample(example)}
+                  className="flex flex-col items-start space-y-1 py-3"
+                >
+                  <div className="font-medium">{example.name}</div>
+                  <div className="text-xs text-muted-foreground font-mono truncate w-full">
+                    {example.content.split('\n')[0]}...
+                  </div>
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs">Emmet Expansions (HTML)</DropdownMenuLabel>
+              {Object.entries(emmetExpansions).slice(0, 5).map(([abbr, expansion]) => (
+                <DropdownMenuItem
+                  key={abbr}
+                  onClick={() => {
+                    const expandedContent = expandEmmet(abbr);
+                    onFileSelect(`emmet_${abbr.replace(/[^a-zA-Z0-9]/g, '_')}.html`, expandedContent);
+                  }}
+                  className="flex flex-col items-start space-y-1 py-2"
+                >
+                  <div className="font-medium font-mono text-xs bg-muted px-2 py-1 rounded">{abbr}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {expansion.split('\n')[0].slice(0, 40)}...
+                  </div>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
           
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl hover:from-purple-600 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="font-medium">New File</span>
-          </button>
+          <div className="flex items-center space-x-2">
+            <Button
+              onClick={() => loadFiles(currentPath)}
+              disabled={loading}
+              variant="outline"
+              size="sm"
+            >
+              <span className={loading ? 'animate-spin' : ''}>🔄</span>
+              <span className="ml-2">Refresh</span>
+            </Button>
+            
+            <Button
+              onClick={() => setShowCreateModal(true)}
+              variant="default"
+              size="sm"
+              className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              New File
+              <DropdownMenuShortcut className="ml-2">Alt+N</DropdownMenuShortcut>
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Path breadcrumb */}
       <div className="px-4 py-3 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-b border-zinc-200 dark:border-zinc-700">
-        <div className="flex items-center space-x-2 text-sm">
-          <button
-            onClick={() => loadFiles('/')}
-            className="px-3 py-1.5 text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 bg-white dark:bg-zinc-800 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-all duration-200 shadow-sm hover:shadow-md"
-          >
-            🏠 Home
-          </button>
-          {currentPath !== '/' && (
-            <>
-              {currentPath.split('/').filter(p => p).map((part, index, arr) => (
-                <React.Fragment key={index}>
-                  <span className="text-purple-400">→</span>
-                  <button
-                    onClick={() => {
-                      const path = '/' + arr.slice(0, index + 1).join('/');
-                      loadFiles(path);
-                    }}
-                    className="px-3 py-1.5 text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 bg-white dark:bg-zinc-800 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-all duration-200 shadow-sm hover:shadow-md"
-                  >
-                    {part}
-                  </button>
-                </React.Fragment>
-              ))}
-            </>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2 text-sm">
+            <button
+              onClick={() => loadFiles('/')}
+              className="px-3 py-1.5 text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 bg-white dark:bg-zinc-800 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-all duration-200 shadow-sm hover:shadow-md"
+            >
+              🏠 Home
+            </button>
+            {currentPath !== '/' && (
+              <>
+                {currentPath.split('/').filter(p => p).map((part, index, arr) => (
+                  <React.Fragment key={index}>
+                    <span className="text-purple-400">→</span>
+                    <button
+                      onClick={() => {
+                        const path = '/' + arr.slice(0, index + 1).join('/');
+                        loadFiles(path);
+                      }}
+                      className="px-3 py-1.5 text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 bg-white dark:bg-zinc-800 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-all duration-200 shadow-sm hover:shadow-md"
+                    >
+                      {part}
+                    </button>
+                  </React.Fragment>
+                ))}
+              </>
+            )}
+          </div>
+          
+          {/* Save Status Indicator */}
+          {viewingFile && (
+            <div className="flex items-center space-x-2">
+              {saveStatus === 'saving' && (
+                <div className="flex items-center space-x-2 text-blue-600 dark:text-blue-400">
+                  <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-xs">Saving...</span>
+                </div>
+              )}
+              {saveStatus === 'saved' && (
+                <div className="flex items-center space-x-2 text-green-600 dark:text-green-400">
+                  <span className="text-xs">✅ Saved</span>
+                </div>
+              )}
+              {saveStatus === 'error' && (
+                <div className="flex items-center space-x-2 text-red-600 dark:text-red-400">
+                  <span className="text-xs">❌ Error saving</span>
+                </div>
+              )}
+              <Button onClick={saveCurrentFile} variant="outline" size="sm" disabled={saveStatus === 'saving'}>
+                <Save className="w-3 h-3 mr-1" />
+                Save
+                <DropdownMenuShortcut className="ml-2">Alt+S</DropdownMenuShortcut>
+              </Button>
+            </div>
           )}
         </div>
       </div>
@@ -388,6 +978,13 @@ export default function FileManager({
             <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
             <span className="ml-2 text-zinc-600 dark:text-zinc-400">Loading files...</span>
           </div>
+        ) : !selectedStudentId ? (
+          // Show this when no valid user ID is available
+          <div className="text-center p-8 text-zinc-500 dark:text-zinc-400">
+            <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
+            <p className="font-medium">No user selected</p>
+            <p className="text-sm mt-1">Please select a student from the dropdown</p>
+          </div>
         ) : files.length === 0 ? (
           <div className="text-center p-8 text-zinc-500 dark:text-zinc-400">
             <Folder className="w-12 h-12 mx-auto mb-3 opacity-50" />
@@ -396,55 +993,110 @@ export default function FileManager({
           </div>
         ) : (
           <div className="divide-y divide-zinc-100 dark:divide-zinc-700">
-            {files.map((file, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between p-4 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 dark:hover:from-purple-900/10 dark:hover:to-pink-900/10 transition-all duration-200 group cursor-pointer"
-                onClick={() => handleFileClick(file)}
-              >
-                <div className="flex items-center space-x-3 flex-1 min-w-0">
-                  {file.type === 'directory' ? (
-                    <Folder className="w-5 h-5 text-purple-500 flex-shrink-0" />
-                  ) : (
-                    <File className="w-5 h-5 text-blue-500 flex-shrink-0" />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200 truncate group-hover:text-purple-700 dark:group-hover:text-purple-300 transition-colors">
-                      {file.name}
-                    </p>
-                    {file.size && (
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                        {(file.size / 1024).toFixed(1)} KB
-                      </p>
-                    )}
+            {files.map((file, index) => {
+              // Fix file extension display by properly parsing the extension
+              const fileExtension = file.name.includes('.') ? file.name.split('.').pop()?.toLowerCase() : '';
+              const fileName = file.name;
+              
+              // Determine file icon based on extension
+              const getFileIcon = () => {
+                if (file.type === 'directory') return <Folder className="w-5 h-5 text-purple-500 flex-shrink-0" />;
+                
+                switch(fileExtension) {
+                  case 'py': return <File className="w-5 h-5 text-blue-500 flex-shrink-0" />;
+                  case 'js': return <File className="w-5 h-5 text-yellow-500 flex-shrink-0" />;
+                  case 'html': return <File className="w-5 h-5 text-orange-500 flex-shrink-0" />;
+                  case 'md': return <File className="w-5 h-5 text-green-500 flex-shrink-0" />;
+                  case 'json': return <File className="w-5 h-5 text-indigo-500 flex-shrink-0" />;
+                  case 'css': return <File className="w-5 h-5 text-pink-500 flex-shrink-0" />;
+                  default: return <File className="w-5 h-5 text-blue-500 flex-shrink-0" />;
+                }
+              };
+              
+              // Fix file size display
+              const getFileSizeDisplay = () => {
+                if (file.type === 'directory') return null;
+                if (file.size === undefined || file.size === null) return 'Unknown size';
+                if (file.size === 0) return <span className="text-amber-600 dark:text-amber-400">Empty file</span>;
+                return file.size < 1024 ? `${file.size} B` : `${(file.size / 1024).toFixed(1)} KB`;
+              };
+              
+              // Check if file has invalid extension (like .py0)
+              const hasInvalidExtension = fileName.match(/\.(py|js|html|css|md|json)0$/i);
+              
+              return (
+                <div
+                  key={index}
+                  className="flex items-center justify-between p-4 hover:bg-gradient-to-r hover:from-zinc-100 hover:to-zinc-50 dark:hover:from-zinc-800/50 dark:hover:to-zinc-700/50 transition-all duration-200 group cursor-pointer"
+                  onClick={() => handleFileClick(file)}
+                >
+                  <div className="flex items-center space-x-3 flex-1 min-w-0">
+                    {getFileIcon()}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center space-x-2">
+                        <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200 truncate group-hover:text-purple-700 dark:group-hover:text-purple-300 transition-colors">
+                          {/* Fix file name display by removing the trailing 0 if it exists */}
+                          {hasInvalidExtension ? fileName.slice(0, -1) : fileName}
+                        </p>
+                        {hasInvalidExtension && (
+                          <span className="text-xs px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded">
+                            Fix needed
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                          {getFileSizeDisplay()}
+                        </p>
+                        {fileExtension && (
+                          <p className="text-xs px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-700 rounded text-zinc-600 dark:text-zinc-400 font-mono">
+                            {fileExtension}
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center space-x-1">
-                  {file.type === 'file' && (
+                  <div className="flex items-center space-x-1">
+                    {file.type === 'file' && (
+                      <>
+                        {file.size === 0 && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAddStarterContent(file);
+                            }}
+                            className="p-2 text-zinc-500 hover:text-green-500 dark:text-zinc-400 dark:hover:text-green-400 transition-colors bg-zinc-100 dark:bg-zinc-700 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-600"
+                            title="Add starter code"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDownloadFile(file);
+                          }}
+                          className="p-2 text-zinc-500 hover:text-blue-500 dark:text-zinc-400 dark:hover:text-blue-400 transition-colors bg-zinc-100 dark:bg-zinc-700 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-600"
+                          title="Download file"
+                        >
+                          <Download className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleDownloadFile(file);
+                        handleDeleteFile(file);
                       }}
-                      className="p-2 text-zinc-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors opacity-0 group-hover:opacity-100"
-                      title="Download file"
+                      className="p-2 text-zinc-500 hover:text-red-500 dark:text-zinc-400 dark:hover:text-red-400 transition-colors bg-zinc-100 dark:bg-zinc-700 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-600"
+                      title="Delete file"
                     >
-                      <Download className="w-4 h-4" />
+                      <Trash2 className="w-4 h-4" />
                     </button>
-                  )}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteFile(file);
-                    }}
-                    className="p-2 text-zinc-400 hover:text-red-500 dark:hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
-                    title="Delete file"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -481,6 +1133,81 @@ export default function FileManager({
                 </label>
               </div>
               
+              {/* Quick Templates for Files */}
+              {createType === 'file' && (
+                <div className="mb-3 space-y-3">
+                  <div>
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-2">Quick templates:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { name: 'main.py', icon: '🐍' },
+                        { name: 'script.js', icon: '⚡' },
+                        { name: 'README.md', icon: '📖' },
+                        { name: 'index.html', icon: '🌐' }
+                      ].map((template) => (
+                        <Button
+                          key={template.name}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setNewName(template.name)}
+                          className="h-8 px-2 text-xs"
+                        >
+                          <span className="mr-1">{template.icon}</span>
+                          {template.name}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {newName.endsWith('.html') && (
+                    <div>
+                      <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-2">Emmet expansions:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {Object.keys(emmetExpansions).slice(0, 6).map((abbr) => (
+                          <Button
+                            key={abbr}
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const content = expandEmmet(abbr);
+                              // Create file with Emmet expansion
+                              const effectiveUserId = isTeacher ? selectedStudentId : (targetUserId || userId);
+                              const filePath = currentPath === '/' ? newName : `${currentPath}/${newName}`;
+                              
+                              fetch('/api/files', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  userId: effectiveUserId,
+                                  path: filePath,
+                                  action: 'create',
+                                  content: content,
+                                  requestingUserId: userId,
+                                  isTeacher,
+                                  classroomId
+                                })
+                              }).then(async (response) => {
+                                const data = await response.json();
+                                if (data.success) {
+                                  await loadFiles(currentPath);
+                                  setShowCreateModal(false);
+                                  setNewName('');
+                                  // Open the file with the expansion
+                                  onFileSelect(filePath, content);
+                                }
+                              });
+                            }}
+                            className="h-8 px-2 text-xs font-mono"
+                          >
+                            {abbr}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              
               <input
                 type="text"
                 value={newName}
@@ -492,21 +1219,23 @@ export default function FileManager({
             </div>
             
             <div className="flex space-x-3">
-              <button
+              <Button
                 onClick={handleCreateFile}
-                className="flex-1 bg-gradient-to-r from-purple-500 to-purple-600 text-white py-2 px-4 rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-200 font-medium"
+                className="flex-1 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700"
               >
                 Create
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => {
                   setShowCreateModal(false);
                   setNewName('');
                 }}
-                className="flex-1 bg-zinc-200 dark:bg-zinc-600 text-zinc-700 dark:text-zinc-300 py-2 px-4 rounded-lg hover:bg-zinc-300 dark:hover:bg-zinc-500 transition-colors font-medium"
+                variant="outline"
+                className="flex-1"
               >
                 Cancel
-              </button>
+                <DropdownMenuShortcut className="ml-2">Esc</DropdownMenuShortcut>
+              </Button>
             </div>
           </div>
         </div>
@@ -519,10 +1248,26 @@ export default function FileManager({
             {/* Viewer Header */}
             <div className="flex items-center justify-between p-4 border-b border-zinc-200 dark:border-zinc-700">
               <div className="flex items-center space-x-3">
-                <File className="w-5 h-5 text-purple-500" />
+                <div className="p-2 bg-zinc-100 dark:bg-zinc-700 rounded-lg">
+                  {viewingFile.name.endsWith('.py') || viewingFile.name.endsWith('.py0') ? (
+                    <span className="text-lg">🐍</span>
+                  ) : viewingFile.name.endsWith('.js') ? (
+                    <span className="text-lg">⚡</span>
+                  ) : viewingFile.name.endsWith('.html') ? (
+                    <span className="text-lg">🌐</span>
+                  ) : viewingFile.name.endsWith('.md') ? (
+                    <span className="text-lg">📝</span>
+                  ) : (
+                    <File className="w-5 h-5 text-purple-500" />
+                  )}
+                </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-zinc-800 dark:text-zinc-200">
-                    {viewingFile.name}
+                  <h3 className="text-lg font-semibold text-zinc-800 dark:text-zinc-200 flex items-center">
+                    {/* Show fixed name without trailing 0 */}
+                    {viewingFile.name.match(/\.(py|js|html|css|md|json)0$/i) ? 
+                      viewingFile.name.slice(0, -1) : 
+                      viewingFile.name}
+                    {isModified && <span className="ml-2 text-orange-500">●</span>}
                   </h3>
                   <p className="text-sm text-zinc-500 dark:text-zinc-400">
                     {viewingFile.path}
@@ -533,32 +1278,81 @@ export default function FileManager({
               <div className="flex items-center space-x-2">
                 {/* Load to Editor Button */}
                 {onFileLoad && (
-                  <button
+                  <Button
                     onClick={handleLoadCodeToEditor}
-                    className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+                    className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700"
                   >
-                    <span>📝</span>
-                    <span className="font-medium">Load to Editor</span>
-                  </button>
+                    <span className="mr-2">📝</span>
+                    Load to Editor
+                  </Button>
                 )}
                 
+                {/* Save Button */}
+                <Button
+                  onClick={saveCurrentFile}
+                  variant="outline"
+                  disabled={saveStatus === 'saving'}
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  Save
+                  <DropdownMenuShortcut className="ml-2">Alt+S</DropdownMenuShortcut>
+                </Button>
+                
                 {/* Close Button */}
-                <button
+                <Button
                   onClick={handleCloseViewer}
-                  className="px-4 py-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 bg-zinc-100 dark:bg-zinc-700 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-600 transition-colors"
+                  variant="outline"
                 >
                   Close
-                </button>
+                  <DropdownMenuShortcut className="ml-2">Esc</DropdownMenuShortcut>
+                </Button>
               </div>
             </div>
             
-            {/* File Content */}
-            <div className="flex-1 p-4 overflow-hidden">
-              <div className="h-full bg-zinc-50 dark:bg-zinc-900 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700">
-                <pre className="h-full p-4 overflow-auto text-sm font-mono text-zinc-800 dark:text-green-400 whitespace-pre-wrap">
-                  {viewingFile.content || 'File is empty'}
-                </pre>
-              </div>
+            {/* Viewer Content */}
+            <div className="flex-1 overflow-hidden">
+              {viewingFile.content !== undefined ? (
+                <div className="h-full border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
+                  <Editor
+                    height="100%"
+                    language={getLanguageFromExtension(viewingFile.name)}
+                    value={viewingFile.content}
+                    onChange={(value) => {
+                      if (viewingFile && value !== undefined) {
+                        setViewingFile(prev => prev ? {
+                          ...prev,
+                          content: value
+                        } : null);
+                        setIsModified(true);
+                      }
+                    }}
+                    theme={theme === 'dark' ? 'vs-dark' : 'light'}
+                    options={{
+                      minimap: { enabled: true },
+                      scrollBeyondLastLine: false,
+                      wordWrap: 'on',
+                      lineNumbers: 'on',
+                      folding: true,
+                      autoIndent: 'full',
+                      formatOnType: true,
+                      formatOnPaste: true,
+                      tabSize: 2,
+                      insertSpaces: true,
+                      renderWhitespace: 'selection',
+                      fontSize: 14,
+                      fontFamily: 'JetBrains Mono, Fira Code, Monaco, Consolas, monospace',
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-full text-zinc-500 dark:text-zinc-400">
+                  <div className="text-center">
+                    <File className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="font-medium">Empty file</p>
+                    <p className="text-sm mt-1">Start typing to add content</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

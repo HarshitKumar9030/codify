@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Editor } from '@monaco-editor/react';
 import { useTheme } from 'next-themes';
 import { 
@@ -16,7 +17,8 @@ import {
   Trash2, 
   Edit3,
   Download,
-  RefreshCw
+  RefreshCw,
+  HelpCircle
 } from 'lucide-react';
 
 interface FileEditorProps {
@@ -59,144 +61,31 @@ export default function FileEditor({
   const [newFolderName, setNewFolderName] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
   const [students, setStudents] = useState<Array<{id: string, name: string}>>([]);
+  
+  const [showHelpDialog, setShowHelpDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState<{show: boolean, file?: FileItem}>({show: false});
+  const [showPromptDialog, setShowPromptDialog] = useState<{show: boolean, title: string, placeholder: string, onConfirm: (value: string) => void}>({show: false, title: '', placeholder: '', onConfirm: () => {}});
+  const [promptValue, setPromptValue] = useState('');
+  const [showSuccessMessage, setShowSuccessMessage] = useState<{show: boolean, message: string}>({show: false, message: ''});
+  const [showErrorMessage, setShowErrorMessage] = useState<{show: boolean, message: string}>({show: false, message: ''});
 
-  // Load students for teacher view
-  useEffect(() => {
-    if (isTeacher && classroomId) {
-      fetch(`/api/classroom/${classroomId}/students`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.success) {
-            setStudents([
-              { id: userId || '', name: 'My Files' },
-              ...data.students.map((s: {id: string, name: string}) => ({ id: s.id, name: s.name }))
-            ]);
-            setSelectedStudentId(userId || '');
-          }
-        })
-        .catch(console.error);
-    }
-  }, [isTeacher, classroomId, userId]);
+  // Helper functions for custom dialogs
+  const showSuccess = useCallback((message: string) => {
+    setShowSuccessMessage({show: true, message});
+    setTimeout(() => setShowSuccessMessage({show: false, message: ''}), 3000);
+  }, []);
 
-  const loadFiles = useCallback(async (path: string = '/') => {
-    setLoading(true);
-    try {
-      const effectiveUserId = isTeacher ? selectedStudentId : (targetUserId || userId);
-      
-      // Don't attempt to load files if no valid user ID
-      if (!effectiveUserId) {
-        console.warn('No user ID available for file listing');
-        setLoading(false);
-        return;
-      }
-      
-      const params = new URLSearchParams();
-      params.append('path', path);
-      params.append('userId', effectiveUserId);
-      if (userId) params.append('requestingUserId', userId);
-      params.append('isTeacher', isTeacher.toString());
-      if (classroomId) params.append('classroomId', classroomId);
-      
-      const response = await fetch(`/api/files?${params}`);
-      const data = await response.json();
-      
-      if (data.success) {
-        setFiles(data.files || []);
-        setCurrentPath(path);
-      } else {
-        console.error('Failed to load files:', data.error || data.message);
-        setFiles([]);
-      }
-    } catch (error) {
-      console.error('Error loading files:', error);
-      setFiles([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [userId, isTeacher, selectedStudentId, targetUserId, classroomId]);
+  const showError = useCallback((message: string) => {
+    setShowErrorMessage({show: true, message});
+    setTimeout(() => setShowErrorMessage({show: false, message: ''}), 5000);
+  }, []);
 
-  const loadFileContent = async (file: FileItem) => {
-    if (file.type === 'directory') {
-      await loadFiles(file.path);
-      return;
-    }
+  const showPrompt = useCallback((title: string, placeholder: string, onConfirm: (value: string) => void) => {
+    setPromptValue('');
+    setShowPromptDialog({show: true, title, placeholder, onConfirm});
+  }, []);
 
-    try {
-      const effectiveUserId = isTeacher ? selectedStudentId : (targetUserId || userId);
-      
-      // Don't attempt to load file if no valid user ID
-      if (!effectiveUserId) {
-        console.warn('No user ID available for file access');
-        return;
-      }
-
-      // Don't attempt to load files with suspicious paths
-      if (!file.path || file.path === '/content' || file.name === 'content') {
-        console.warn('Ignoring request for suspicious file path:', file.path);
-        return;
-      }
-      
-      const params = new URLSearchParams();
-      params.append('userId', effectiveUserId);
-      if (classroomId) params.append('classroomId', classroomId);
-      if (isTeacher) params.append('isTeacher', 'true');
-      params.append('path', file.path);
-      if (userId) params.append('requestingUserId', userId);
-      
-      const response = await fetch(`/api/files/content?${params}`);
-      const data = await response.json();
-      
-      if (data.success) {
-        const language = getLanguageFromExtension(file.name);
-        setEditingFile({
-          path: file.path,
-          name: file.name,
-          content: data.content || '',
-          language,
-          isModified: false
-        });
-      } else {
-        console.error('Failed to load file content:', data.error || data.message);
-      }
-    } catch (error) {
-      console.error('Error loading file content:', error);
-    }
-  };
-
-  const saveFile = async () => {
-    if (!editingFile) return;
-
-    try {
-      const effectiveUserId = isTeacher ? selectedStudentId : (targetUserId || userId);
-      const response = await fetch('/api/files', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: effectiveUserId,
-          path: editingFile.path,
-          content: editingFile.content,
-          action: 'update',
-          requestingUserId: userId,
-          isTeacher,
-          classroomId
-        }),
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        setEditingFile(prev => prev ? { ...prev, isModified: false } : null);
-        await loadFiles(currentPath);
-        alert('File saved successfully!');
-      } else {
-        alert(`Failed to save file: ${data.message}`);
-      }
-    } catch (error) {
-      console.error('Error saving file:', error);
-      alert('Error saving file');
-    }
-  };
-
-  const createFile = async () => {
+  const createFile = useCallback(async () => {
     if (!newFileName.trim()) return;
 
     try {
@@ -222,12 +111,189 @@ export default function FileEditor({
         setNewFileName('');
         setIsCreateFileOpen(false);
         await loadFiles(currentPath);
+        showSuccess(`File "${newFileName}" created successfully!`);
       } else {
-        alert(`Failed to create file: ${data.message}`);
+        showError(`Failed to create file: ${data.message}`);
       }
-    } catch (error) {
-      console.error('Error creating file:', error);
-      alert('Error creating file');
+    } catch {
+      showError('Error creating file');
+    }
+  }, [newFileName, isTeacher, selectedStudentId, targetUserId, userId, currentPath, classroomId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const saveFile = useCallback(async () => {
+    if (!editingFile) return;
+
+    try {
+      const effectiveUserId = isTeacher ? selectedStudentId : (targetUserId || userId);
+      const response = await fetch('/api/files', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: effectiveUserId,
+          path: editingFile.path,
+          content: editingFile.content,
+          action: 'update',
+          requestingUserId: userId,
+          isTeacher,
+          classroomId
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setEditingFile(prev => prev ? { ...prev, isModified: false } : null);
+        showSuccess('File saved successfully!');
+      } else {
+        showError(`Failed to save file: ${data.message}`);
+      }
+    } catch {
+      showError('Error saving file');
+    }
+  }, [editingFile, isTeacher, selectedStudentId, targetUserId, userId, classroomId, showError, showSuccess]);
+
+  // Enhanced keyboard shortcuts with Alt+S for save (to avoid browser conflicts)
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Alt+S to save
+      if (event.altKey && (event.key === 's' || event.key === 'S')) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (editingFile) {
+          saveFile();
+        }
+        return false;
+      }
+      
+      // Alt+N to create new file
+      if (event.altKey && (event.key === 'n' || event.key === 'N')) {
+        event.preventDefault();
+        event.stopPropagation();
+        showPrompt('Create New File', 'Enter file name (e.g., solution.py)', (filename) => {
+          if (filename.trim()) {
+            setNewFileName(filename.trim());
+            createFile();
+          }
+        });
+        return false;
+      }
+      
+      // Escape to close editor
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        if (editingFile) {
+          setEditingFile(null);
+          event.stopPropagation();
+          return false;
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown, true);
+    window.addEventListener('keydown', handleKeyDown, true);
+    
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown, true);
+      window.removeEventListener('keydown', handleKeyDown, true);
+    };
+  }, [editingFile, saveFile, createFile, showPrompt]);
+
+  // Load students for teacher view
+  useEffect(() => {
+    if (isTeacher && classroomId) {
+      fetch(`/api/classroom/${classroomId}/students`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setStudents([
+              { id: userId || '', name: 'My Files' },
+              ...data.students.map((s: {id: string, name: string}) => ({ id: s.id, name: s.name }))
+            ]);
+            setSelectedStudentId(userId || '');
+          }
+        })
+        .catch(() => {
+          // Silent error handling
+        });
+    }
+  }, [isTeacher, classroomId, userId]);
+
+  const loadFiles = useCallback(async (path: string = '/') => {
+    setLoading(true);
+    try {
+      const effectiveUserId = isTeacher ? selectedStudentId : (targetUserId || userId);
+      
+      // Don't attempt to load files if no valid user ID
+      if (!effectiveUserId) {
+        setLoading(false);
+        return;
+      }
+      
+      const params = new URLSearchParams();
+      params.append('path', path);
+      params.append('userId', effectiveUserId);
+      if (userId) params.append('requestingUserId', userId);
+      params.append('isTeacher', isTeacher.toString());
+      if (classroomId) params.append('classroomId', classroomId);
+      
+      const response = await fetch(`/api/files?${params}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setFiles(data.files || []);
+        setCurrentPath(path);
+      } else {
+        setFiles([]);
+      }
+    } catch {
+      setFiles([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [userId, isTeacher, selectedStudentId, targetUserId, classroomId]);
+
+  const loadFileContent = async (file: FileItem) => {
+    if (file.type === 'directory') {
+      await loadFiles(file.path);
+      return;
+    }
+
+    try {
+      const effectiveUserId = isTeacher ? selectedStudentId : (targetUserId || userId);
+      
+      // Don't attempt to load file if no valid user ID
+      if (!effectiveUserId) {
+        return;
+      }
+
+      // Don't attempt to load files with suspicious paths
+      if (!file.path || file.path === '/content' || file.name === 'content') {
+        return;
+      }
+      
+      const params = new URLSearchParams();
+      params.append('userId', effectiveUserId);
+      if (classroomId) params.append('classroomId', classroomId);
+      if (isTeacher) params.append('isTeacher', 'true');
+      params.append('path', file.path);
+      if (userId) params.append('requestingUserId', userId);
+      
+      const response = await fetch(`/api/files/content?${params}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        const language = getLanguageFromExtension(file.name);
+        setEditingFile({
+          path: file.path,
+          name: file.name,
+          content: data.content || '',
+          language,
+          isModified: false
+        });
+      } else {
+        // Silent error handling
+      }
+    } catch {
+      // Silent error handling
     }
   };
 
@@ -256,17 +322,22 @@ export default function FileEditor({
         setNewFolderName('');
         setIsCreateFolderOpen(false);
         await loadFiles(currentPath);
+        showSuccess(`Folder "${newFolderName}" created successfully!`);
       } else {
-        alert(`Failed to create folder: ${data.message}`);
+        showError(`Failed to create folder: ${data.message}`);
       }
-    } catch (error) {
-      console.error('Error creating folder:', error);
-      alert('Error creating folder');
+    } catch {
+      showError('Error creating folder');
     }
   };
 
   const deleteFile = async (file: FileItem) => {
-    if (!confirm(`Are you sure you want to delete ${file.name}?`)) return;
+    setShowDeleteDialog({show: true, file});
+  };
+
+  const handleDeleteConfirm = async () => {
+    const file = showDeleteDialog.file;
+    if (!file) return;
 
     try {
       const effectiveUserId = isTeacher ? selectedStudentId : (targetUserId || userId);
@@ -289,12 +360,14 @@ export default function FileEditor({
         if (editingFile?.path === file.path) {
           setEditingFile(null);
         }
+        showSuccess(`${file.name} deleted successfully!`);
       } else {
-        alert(`Failed to delete ${file.name}: ${data.message}`);
+        showError(`Failed to delete ${file.name}: ${data.message}`);
       }
-    } catch (error) {
-      console.error('Error deleting file:', error);
-      alert('Error deleting file');
+    } catch {
+      showError('Error deleting file');
+    } finally {
+      setShowDeleteDialog({show: false});
     }
   };
 
@@ -365,7 +438,8 @@ export default function FileEditor({
   }, [selectedStudentId, loadFiles, isTeacher, userId]);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
+    <>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
       {/* File Manager Panel */}
       <Card className="bg-white dark:bg-zinc-900">
         <CardHeader>
@@ -373,6 +447,17 @@ export default function FileEditor({
             <CardTitle className="flex items-center">
               <FileText className="h-5 w-5 mr-2" />
               File Manager
+              
+              {/* Keyboard Shortcuts Help */}
+              <Button
+                size="sm"
+                variant="ghost"
+                className="ml-2 h-8 w-8 p-0 hover:bg-purple-100 dark:hover:bg-purple-900/30"
+                onClick={() => setShowHelpDialog(true)}
+                title="Keyboard Shortcuts Help"
+              >
+                <HelpCircle className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+              </Button>
             </CardTitle>
             <div className="flex space-x-2">
               <Button
@@ -449,18 +534,18 @@ export default function FileEditor({
           {isTeacher && students.length > 0 && (
             <div className="mt-4">
               <Label htmlFor="studentSelect">Viewing files for:</Label>
-              <select
-                id="studentSelect"
-                value={selectedStudentId}
-                onChange={(e) => setSelectedStudentId(e.target.value)}
-                className="w-full mt-1 px-3 py-2 border rounded-md"
-              >
-                {students.map((student) => (
-                  <option key={student.id} value={student.id}>
-                    {student.name}
-                  </option>
-                ))}
-              </select>
+              <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
+                <SelectTrigger className="w-full mt-1">
+                  <SelectValue placeholder="Select a student" />
+                </SelectTrigger>
+                <SelectContent>
+                  {students.map((student) => (
+                    <SelectItem key={student.id} value={student.id}>
+                      {student.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
 
@@ -607,6 +692,131 @@ export default function FileEditor({
           )}
         </CardContent>
       </Card>
-    </div>
+      </div>
+
+      {/* Custom Dialogs */}
+    {/* Help Dialog */}
+    <Dialog open={showHelpDialog} onOpenChange={setShowHelpDialog}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center">
+            <HelpCircle className="w-5 h-5 mr-2 text-purple-600" />
+            Keyboard Shortcuts & Features
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 text-sm">
+          <div>
+            <h4 className="font-semibold mb-2">⌨️ Keyboard Shortcuts:</h4>
+            <div className="space-y-1 text-zinc-600 dark:text-zinc-400">
+              <div>🔸 <kbd className="px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded">Alt+S</kbd> - Save current file</div>
+              <div>🔸 <kbd className="px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded">Alt+N</kbd> - Create new file</div>
+              <div>🔸 <kbd className="px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded">Escape</kbd> - Close file editor</div>
+            </div>
+          </div>
+          <div>
+            <h4 className="font-semibold mb-2">🎯 Language Support:</h4>
+            <div className="space-y-1 text-zinc-600 dark:text-zinc-400">
+              <div>🔸 .py files → Python intellisense</div>
+              <div>🔸 .js/.jsx files → JavaScript intellisense</div>
+              <div>🔸 .ts/.tsx files → TypeScript intellisense</div>
+              <div>🔸 .html files → HTML intellisense</div>
+              <div>🔸 .css files → CSS intellisense</div>
+              <div>🔸 .md files → Markdown intellisense</div>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+
+    {/* Delete Confirmation Dialog */}
+    <Dialog open={showDeleteDialog.show} onOpenChange={(open) => setShowDeleteDialog({show: open})}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center text-red-600">
+            <Trash2 className="w-5 h-5 mr-2" />
+            Confirm Delete
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <p className="text-zinc-600 dark:text-zinc-400">
+            Are you sure you want to delete <strong>{showDeleteDialog.file?.name}</strong>?
+          </p>
+          <p className="text-sm text-red-500">This action cannot be undone.</p>
+          <div className="flex justify-end space-x-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowDeleteDialog({show: false})}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDeleteConfirm}
+            >
+              Delete
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+
+    {/* Prompt Dialog */}
+    <Dialog open={showPromptDialog.show} onOpenChange={(open) => setShowPromptDialog(prev => ({...prev, show: open}))}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{showPromptDialog.title}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <Input
+            value={promptValue}
+            onChange={(e) => setPromptValue(e.target.value)}
+            placeholder={showPromptDialog.placeholder}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                showPromptDialog.onConfirm(promptValue);
+                setShowPromptDialog({show: false, title: '', placeholder: '', onConfirm: () => {}});
+              }
+            }}
+          />
+          <div className="flex justify-end space-x-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowPromptDialog({show: false, title: '', placeholder: '', onConfirm: () => {}})}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                showPromptDialog.onConfirm(promptValue);
+                setShowPromptDialog({show: false, title: '', placeholder: '', onConfirm: () => {}});
+              }}
+            >
+              Confirm
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+
+    {/* Success Message */}
+    {showSuccessMessage.show && (
+      <div className="fixed top-4 right-4 z-50 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg animate-in slide-in-from-top-2">
+        <div className="flex items-center">
+          <span className="mr-2">✅</span>
+          {showSuccessMessage.message}
+        </div>
+      </div>
+    )}
+
+    {/* Error Message */}
+    {showErrorMessage.show && (
+      <div className="fixed top-4 right-4 z-50 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg animate-in slide-in-from-top-2">
+        <div className="flex items-center">
+          <span className="mr-2">❌</span>
+          {showErrorMessage.message}
+        </div>
+      </div>
+    )}
+    </>
   );
 }

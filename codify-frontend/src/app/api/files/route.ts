@@ -20,15 +20,28 @@ export async function GET(request: NextRequest) {
     const path = url.searchParams.get('path') || '/';
     const classroomId = url.searchParams.get('classroomId');
     const isTeacher = url.searchParams.get('isTeacher');
-    const targetUserId = url.searchParams.get('targetUserId');
+    const targetUserId = url.searchParams.get('userId'); // This is the target user whose files we want to view
+    const requestingUserId = url.searchParams.get('requestingUserId'); // This is the teacher making the request
 
-    // Use target user ID if provided (for teachers viewing student files), otherwise use session user ID
+    // For teachers: use targetUserId if provided, otherwise use session user ID
+    // For students: always use session user ID
     const effectiveUserId = targetUserId || session.user.id;
+    const effectiveRequestingUserId = requestingUserId || session.user.id;
+
+    console.log('📁 File API params:', {
+      targetUserId,
+      requestingUserId,
+      effectiveUserId,
+      effectiveRequestingUserId,
+      isTeacher,
+      classroomId,
+      sessionUserId: session.user.id
+    });
 
     const params = new URLSearchParams({
-      userId: effectiveUserId,
+      userId: effectiveUserId, // Whose files to show
       path: path,
-      requestingUserId: session.user.id, // Always pass the session user as the requesting user
+      requestingUserId: effectiveRequestingUserId, // Who is making the request
       ...(classroomId && { classroomId }),
       ...(isTeacher && { isTeacher })
     });
