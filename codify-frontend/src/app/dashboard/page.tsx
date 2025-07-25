@@ -27,13 +27,15 @@ import {
   Upload,
   FileText,
   Download,
-  X
+  X,
+  BarChart3
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import Editor from "@monaco-editor/react";
 import { useTheme } from "next-themes";
 import InteractiveExecutionPanel from "@/components/InteractiveExecutionPanel";
 import FileEditor from "@/components/FileEditor";
+import DashboardAnalytics from "@/components/DashboardAnalytics";
 
 interface Classroom {
   id: string;
@@ -127,7 +129,10 @@ export default function Dashboard() {
     classroomId: "",
     dueDate: "",
     points: 100,
-    attachedFiles: [] as File[]
+    attachedFiles: [] as File[],
+    allowLateSubmissions: false,
+    penaltyPercentage: 2,
+    maxPenalty: 50
   });
   const [assignmentLoading, setAssignmentLoading] = useState(false);
   const [fileUploading, setFileUploading] = useState(false);
@@ -297,7 +302,10 @@ export default function Dashboard() {
           classroomId: "",
           dueDate: "",
           points: 100,
-          attachedFiles: []
+          attachedFiles: [],
+          allowLateSubmissions: false,
+          penaltyPercentage: 2,
+          maxPenalty: 50
         });
         setCreateAssignmentOpen(false);
         fetchAssignments();
@@ -497,7 +505,7 @@ export default function Dashboard() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:w-fit lg:grid-cols-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+          <TabsList className="grid w-full grid-cols-6 lg:w-fit lg:grid-cols-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
             <TabsTrigger value="classrooms" className="flex items-center space-x-2 data-[state=active]:bg-purple-100 dark:data-[state=active]:bg-purple-900/30 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-300">
               <Users className="h-4 w-4" />
               <span>Classrooms</span>
@@ -514,6 +522,12 @@ export default function Dashboard() {
               <BookOpen className="h-4 w-4" />
               <span>Assignments</span>
             </TabsTrigger>
+            {session?.user?.role === "TEACHER" && (
+              <TabsTrigger value="analytics" className="flex items-center space-x-2 data-[state=active]:bg-purple-100 dark:data-[state=active]:bg-purple-900/30 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-300">
+                <BarChart3 className="h-4 w-4" />
+                <span>Analytics</span>
+              </TabsTrigger>
+            )}
             <TabsTrigger value="leaderboard" className="flex items-center space-x-2 data-[state=active]:bg-purple-100 dark:data-[state=active]:bg-purple-900/30 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-300">
               <GraduationCap className="h-4 w-4" />
               <span>Leaderboard</span>
@@ -841,6 +855,62 @@ export default function Dashboard() {
                         />
                       </div>
 
+                      {/* Late Submission Settings */}
+                      <div className="space-y-4 p-4 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
+                        <div className="flex items-center space-x-2">
+                          <input
+                            id="allowLateSubmissions"
+                            type="checkbox"
+                            checked={newAssignment.allowLateSubmissions}
+                            onChange={(e) => setNewAssignment(prev => ({ ...prev, allowLateSubmissions: e.target.checked }))}
+                            className="rounded border-zinc-300 dark:border-zinc-600"
+                          />
+                          <Label htmlFor="allowLateSubmissions" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                            Allow late submissions
+                          </Label>
+                        </div>
+                        
+                        {newAssignment.allowLateSubmissions && (
+                          <div className="grid grid-cols-2 gap-4 ml-6">
+                            <div className="space-y-2">
+                              <Label htmlFor="penaltyPercentage" className="text-sm text-zinc-600 dark:text-zinc-400">
+                                Penalty per 12 hours (%)
+                              </Label>
+                              <Input
+                                id="penaltyPercentage"
+                                type="number"
+                                min="0"
+                                max="100"
+                                value={newAssignment.penaltyPercentage}
+                                onChange={(e) => setNewAssignment(prev => ({ ...prev, penaltyPercentage: parseInt(e.target.value) || 0 }))}
+                                className="bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="maxPenalty" className="text-sm text-zinc-600 dark:text-zinc-400">
+                                Maximum penalty (%)
+                              </Label>
+                              <Input
+                                id="maxPenalty"
+                                type="number"
+                                min="0"
+                                max="100"
+                                value={newAssignment.maxPenalty}
+                                onChange={(e) => setNewAssignment(prev => ({ ...prev, maxPenalty: parseInt(e.target.value) || 0 }))}
+                                className="bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700"
+                              />
+                            </div>
+                          </div>
+                        )}
+                        
+                        {newAssignment.allowLateSubmissions && (
+                          <p className="text-xs text-zinc-500 dark:text-zinc-400 ml-6">
+                            Students will lose {newAssignment.penaltyPercentage}% of their score every 12 hours after the due date, 
+                            up to a maximum of {newAssignment.maxPenalty}%. At maximum penalty, submissions will be disabled.
+                          </p>
+                        )}
+                      </div>
+
                       {/* File Upload Section */}
                       <div className="space-y-2">
                         <Label htmlFor="fileUpload" className="text-sm font-medium text-zinc-700 dark:text-zinc-300 flex items-center gap-2">
@@ -1078,6 +1148,46 @@ export default function Dashboard() {
               </div>
             )}
           </TabsContent>
+
+          {/* Analytics Tab - Teachers Only */}
+          {session?.user?.role === "TEACHER" && (
+            <TabsContent value="analytics" className="space-y-6">
+              <div className="flex justify-between items-center">
+                <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">
+                  Analytics Dashboard
+                </h1>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                {classrooms.map((classroom) => (
+                  <Card key={classroom.id} className="bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
+                    <CardHeader>
+                      <CardTitle className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                        {classroom.name}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <DashboardAnalytics classroomId={classroom.id} />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {classrooms.length === 0 && (
+                <Card className="bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
+                  <CardContent className="flex flex-col items-center justify-center py-12">
+                    <BarChart3 className="h-12 w-12 text-zinc-400 mb-4" />
+                    <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-2">
+                      No Analytics Available
+                    </h3>
+                    <p className="text-zinc-600 dark:text-zinc-400 text-center">
+                      Create a classroom and add assignments to see analytics data.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+          )}
 
           {/* Leaderboard Tab */}
           <TabsContent value="leaderboard" className="space-y-6">

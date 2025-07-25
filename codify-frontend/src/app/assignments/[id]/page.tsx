@@ -24,6 +24,9 @@ interface Assignment {
   dueDate?: string;
   language: string;
   points: number;
+  allowLateSubmissions: boolean;
+  penaltyPercentage: number;
+  maxPenalty: number;
   createdAt: string;
   classroom: {
     id: string;
@@ -39,10 +42,14 @@ interface Submission {
   code: string;
   status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'NEEDS_REVIEW';
   score?: number;
+  originalScore?: number;
+  latePenalty?: number;
   feedback?: string;
   executionLog?: string;
   submittedAt: string;
   gradedAt?: string;
+  isLate?: boolean;
+  hoursLate?: number;
   student?: {
     id: string;
     name: string;
@@ -161,14 +168,23 @@ export default function AssignmentPage() {
 
   // Check due date when assignment data is available
   useEffect(() => {
-    if (assignment?.dueDate && new Date() > new Date(assignment.dueDate) && !isTeacher) {
+    if (assignment?.dueDate && new Date() > new Date(assignment.dueDate)) {
       setTimeout(() => {
-        showNotification(
-          'warning',
-          'Assignment Past Due',
-          `This assignment was due on ${new Date(assignment.dueDate!).toLocaleDateString()}. Late submissions may not be accepted or may receive reduced credit.`,
-          <Calendar className="h-5 w-5" />
-        );
+        if (isTeacher) {
+          showNotification(
+            'warning',
+            'Assignment Past Due',
+            `This assignment was due on ${new Date(assignment.dueDate!).toLocaleDateString()}. You may want to review submissions and consider revoking or extending the deadline.`,
+            <Calendar className="h-5 w-5" />
+          );
+        } else {
+          showNotification(
+            'warning',
+            'Assignment Past Due',
+            `This assignment was due on ${new Date(assignment.dueDate!).toLocaleDateString()}. Late submissions may not be accepted or may receive reduced credit.`,
+            <Calendar className="h-5 w-5" />
+          );
+        }
       }, 1000);
     }
   }, [assignment?.dueDate, isTeacher]);
@@ -331,6 +347,12 @@ export default function AssignmentPage() {
       return;
     }
 
+    // Ensure we have a user ID for file operations
+    if (!session?.user?.id) {
+      showNotification('error', 'Authentication Error', 'User session not found. Please log in again.');
+      return;
+    }
+
     try {
       const response = await fetch('/api/files', {
         method: 'POST',
@@ -338,7 +360,11 @@ export default function AssignmentPage() {
         body: JSON.stringify({
           path: `/${filename}`,
           content: code,
-          action: 'create'
+          action: 'create',
+          userId: session.user.id, // Ensure file is created in user's directory
+          requestingUserId: session.user.id,
+          classroomId: assignment?.classroom?.id,
+          isTeacher: isTeacher
         }),
       });
 
@@ -450,6 +476,24 @@ export default function AssignmentPage() {
                         </span>
                       )}
                     </span>
+                  </div>
+                )}
+                
+                {/* Late submission info for students */}
+                {!isTeacher && assignment.dueDate && new Date() > new Date(assignment.dueDate) && assignment.allowLateSubmissions && (
+                  <div className="flex items-center space-x-1 text-amber-600 dark:text-amber-400">
+                    <AlertTriangle className="h-4 w-4" />
+                    <span className="text-xs">
+                      Late submissions: -{assignment.penaltyPercentage}% per 12hrs (max -{assignment.maxPenalty}%)
+                    </span>
+                  </div>
+                )}
+                
+                {/* No late submissions allowed */}
+                {!isTeacher && assignment.dueDate && new Date() > new Date(assignment.dueDate) && !assignment.allowLateSubmissions && (
+                  <div className="flex items-center space-x-1 text-red-600 dark:text-red-400">
+                    <XCircle className="h-4 w-4" />
+                    <span className="text-xs">Late submissions not allowed</span>
                   </div>
                 )}
                 <Badge variant="outline">{assignment.points} points</Badge>
@@ -575,7 +619,6 @@ export default function AssignmentPage() {
                           </div>
                         )}
 
-                        {/* Attached Files Display */}
                         {sub.attachedFiles && (() => {
                           try {
                             const files = typeof sub.attachedFiles === 'string' 

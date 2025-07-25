@@ -24,7 +24,10 @@ export async function POST(request: NextRequest) {
       testCases,
       classroomId,
       dueDate,
-      points 
+      points,
+      allowLateSubmissions,
+      penaltyPercentage,
+      maxPenalty
     } = await request.json();
 
     if (!title || !description || !classroomId || !language) {
@@ -61,6 +64,9 @@ export async function POST(request: NextRequest) {
         teacherId: session.user.id,
         dueDate: dueDate ? new Date(dueDate) : null,
         points: points || 100,
+        allowLateSubmissions: allowLateSubmissions || false,
+        penaltyPercentage: penaltyPercentage || 2,
+        maxPenalty: maxPenalty || 50,
       },
       include: {
         classroom: {

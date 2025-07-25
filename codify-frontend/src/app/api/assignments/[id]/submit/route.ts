@@ -66,9 +66,47 @@ export async function POST(
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // Check if assignment is past due date
-    if (assignment.dueDate && new Date() > assignment.dueDate) {
-      return NextResponse.json({ error: 'Assignment is past due date' }, { status: 400 });
+    // Check if assignment is past due date and handle late submissions
+    const now = new Date();
+    const isLate = assignment.dueDate && now > assignment.dueDate;
+    
+    if (isLate && !assignment.allowLateSubmissions) {
+      return NextResponse.json({ error: 'Assignment is past due date and late submissions are not allowed' }, { status: 400 });
+    }
+    
+    // Calculate late penalty if applicable
+    let latePenalty = 0;
+    let hoursLate = 0;
+    
+    if (isLate && assignment.allowLateSubmissions && assignment.dueDate) {
+      hoursLate = Math.floor((now.getTime() - assignment.dueDate.getTime()) / (1000 * 60 * 60));
+      
+      // Check if student has an approved excuse
+      const approvedExcuse = await prisma.submissionExcuse.findFirst({
+        where: {
+          assignmentId,
+          studentId: currentUser.id,
+          status: 'APPROVED'
+        }
+      });
+      
+      if (!approvedExcuse) {
+        // Calculate penalty: assignment.penaltyPercentage every 12 hours, max assignment.maxPenalty
+        const penaltyPeriods = Math.floor(hoursLate / 12);
+        latePenalty = Math.min(
+          penaltyPeriods * (assignment.penaltyPercentage || 2),
+          assignment.maxPenalty || 50
+        );
+        
+        // Check if maximum penalty reached (disallow submission if >= maxPenalty)
+        if (latePenalty >= (assignment.maxPenalty || 50)) {
+          return NextResponse.json({ 
+            error: `Assignment is too late to submit. Maximum penalty of ${assignment.maxPenalty || 50}% has been reached.`,
+            latePenalty,
+            hoursLate
+          }, { status: 400 });
+        }
+      }
     }
 
     // Check existing submissions and count
@@ -129,6 +167,10 @@ export async function POST(
           code,
           status: 'PENDING',
           submittedAt: new Date(),
+          isLate: isLate || false,
+          hoursLate: hoursLate,
+          latePenalty: latePenalty,
+          originalScore: null, // Will be set when graded
           // Reset grading fields
           score: null,
           feedback: null,
@@ -143,7 +185,11 @@ export async function POST(
           code,
           status: 'PENDING',
           studentId: currentUser.id,
-          assignmentId
+          assignmentId,
+          isLate: isLate || false,
+          hoursLate: hoursLate,
+          latePenalty: latePenalty,
+          originalScore: null // Will be set when graded
         }
       });
     }

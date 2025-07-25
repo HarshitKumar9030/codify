@@ -61,12 +61,24 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
     }
 
+    // Calculate final score considering late penalty
+    let finalScore = score;
+    let originalScore = score;
+    
+    if (score !== undefined && score !== null && submission.isLate && submission.latePenalty > 0) {
+      // Apply late penalty to the score
+      const penaltyDeduction = (score * submission.latePenalty) / 100;
+      finalScore = Math.max(0, score - penaltyDeduction);
+      originalScore = score; // Store original score before penalty
+    }
+
     // Update submission with grade
     const updatedSubmission = await prisma.submission.update({
       where: { id: submissionId },
       data: {
         status: status as 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'NEEDS_REVIEW',
-        score: score !== undefined ? score : null,
+        score: finalScore !== undefined ? finalScore : null,
+        originalScore: originalScore !== undefined ? originalScore : null,
         feedback: feedback || null,
         gradedAt: new Date()
       }
@@ -79,7 +91,7 @@ export async function POST(
           userId: submission.studentId,
           type: 'ASSIGNMENT_GRADED',
           title: `Assignment "${assignment.title}" has been graded`,
-          message: `Your submission has been ${status.toLowerCase()}. ${feedback ? `Feedback: ${feedback}` : ''}`,
+          message: `Your submission has been ${status.toLowerCase()}. ${score !== undefined ? `Score: ${finalScore}${submission.isLate && submission.latePenalty > 0 ? ` (${originalScore} - ${submission.latePenalty}% late penalty)` : ''}` : ''} ${feedback ? `Feedback: ${feedback}` : ''}`,
           data: JSON.stringify({
             assignmentId,
             submissionId,

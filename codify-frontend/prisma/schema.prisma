@@ -61,6 +61,8 @@ model User {
   enrollments   Enrollment[]
   submissions   Submission[]
   notifications Notification[]
+  excuses       SubmissionExcuse[]
+  reviewedExcuses SubmissionExcuse[] @relation("ExcuseReviewer")
   
   // Chat relations
   sentMessages  ChatMessage[] @relation("SentMessages")
@@ -124,6 +126,12 @@ model Assignment {
   points      Int      @default(100) // Points for the assignment
   teacherId   String   @db.ObjectId
   classroomId String   @db.ObjectId
+  
+  // Late submission settings
+  allowLateSubmissions Boolean @default(false)
+  penaltyPercentage    Float   @default(2.0) // Penalty per 12-hour period (default 2%)
+  maxPenalty           Float   @default(50.0) // Maximum penalty (default 50%)
+  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -131,6 +139,7 @@ model Assignment {
   teacher     User         @relation("TeacherAssignments", fields: [teacherId], references: [id], onDelete: Cascade)
   classroom   Classroom    @relation(fields: [classroomId], references: [id], onDelete: Cascade)
   submissions Submission[]
+  excuses     SubmissionExcuse[]
 }
 
 model Submission {
@@ -138,6 +147,8 @@ model Submission {
   code             String
   status           SubmissionStatus @default(PENDING)
   score            Int?             // 0-100
+  originalScore    Int?             // Original score before late penalties
+  latePenalty      Float?           // Late penalty percentage applied
   feedback         String?
   executionLog     String?          // JSON string of execution results
   studentId        String           @db.ObjectId
@@ -146,6 +157,8 @@ model Submission {
   gradedAt         DateTime?
   submissionCount  Int              @default(1) // Track how many times submitted
   attachedFiles    String?          // JSON string of file paths relative to user directory
+  isLate           Boolean          @default(false) // Whether this is a late submission
+  hoursLate        Float?           // How many hours late this submission was
 
   // Relations
   student    User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
@@ -157,6 +170,31 @@ enum SubmissionStatus {
   ACCEPTED
   REJECTED
   NEEDS_REVIEW
+}
+
+model SubmissionExcuse {
+  id           String      @id @default(auto()) @map("_id") @db.ObjectId
+  studentId    String      @db.ObjectId
+  assignmentId String      @db.ObjectId
+  reason       String      // Student's excuse for late submission
+  status       ExcuseStatus @default(PENDING)
+  teacherNote  String?     // Teacher's response/note
+  submittedAt  DateTime    @default(now())
+  reviewedAt   DateTime?
+  reviewedBy   String?     @db.ObjectId
+
+  // Relations
+  student    User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  reviewer   User?      @relation("ExcuseReviewer", fields: [reviewedBy], references: [id])
+
+  @@unique([studentId, assignmentId]) // One excuse per student per assignment
+}
+
+enum ExcuseStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 model Notification {
