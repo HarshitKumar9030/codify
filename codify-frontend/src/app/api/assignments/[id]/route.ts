@@ -54,6 +54,11 @@ export async function GET(
     let hasAccess = isTeacher;
 
     if (!isTeacher) {
+      // For students, don't allow access to revoked assignments
+      if (!assignment.isActive || assignment.revokedAt) {
+        return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
+      }
+
       // Check if user is enrolled in the classroom
       const enrollment = await prisma.enrollment.findFirst({
         where: {

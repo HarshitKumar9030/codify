@@ -192,6 +192,7 @@ export async function GET(request: NextRequest) {
         classroomId: {
           in: classroomIds
         },
+        isActive: true, // Only show active (non-revoked) assignments to students
         ...(classroomId && { classroomId })
       };
 

@@ -73,7 +73,7 @@ export async function PATCH(
           type: "ASSIGNMENT_REVOKED",
           title: "Assignment Revoked",
           message: `The assignment "${assignment.title}" has been revoked by your teacher.`,
-          assignmentId: assignmentId
+          data: JSON.stringify({ assignmentId: assignmentId })
         }))
       });
     }
@@ -158,7 +158,7 @@ export async function POST(
           type: "ASSIGNMENT_REACTIVATED",
           title: "Assignment Reactivated",
           message: `The assignment "${assignment.title}" has been reactivated by your teacher.`,
-          assignmentId: assignmentId
+          data: JSON.stringify({ assignmentId: assignmentId })
         }))
       });
     }

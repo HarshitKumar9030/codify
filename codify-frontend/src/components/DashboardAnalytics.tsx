@@ -50,7 +50,7 @@ interface DashboardAnalyticsProps {
   isTeacher: boolean;
 }
 
-export default function DashboardAnalytics({ classroomId, isTeacher }: DashboardAnalyticsProps) {
+export default function DashboardAnalytics({ classroomId }: DashboardAnalyticsProps) {
   const [analytics, setAnalytics] = useState<AssignmentAnalytics[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -218,7 +218,7 @@ export default function DashboardAnalytics({ classroomId, isTeacher }: Dashboard
         </div>
 
         {/* Assignment Details */}
-        <div className={`grid gap-6 lg:gap-8 ${isFullscreen ? 'grid-cols-1 2xl:grid-cols-2' : 'grid-cols-1'}`}>
+        <div className={`grid gap-6 lg:gap-8 grid-cols-1 ${isFullscreen ? 'grid-cols-1 2xl:grid-cols-2' : 'grid-cols-1'}`}>
           {analytics.map((assignment) => (
             <Card key={assignment.assignmentId} className="border-zinc-200 dark:border-zinc-800 shadow-lg min-w-0 w-full">
               <CardHeader className="pb-4 lg:pb-6">

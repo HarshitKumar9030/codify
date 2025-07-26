@@ -505,7 +505,7 @@ export default function Dashboard() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6 lg:w-fit lg:grid-cols-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+          <TabsList className={`grid w-full ${session?.user?.role === "TEACHER" ? "grid-cols-6" : "grid-cols-5"} lg:w-fit ${session?.user?.role === "TEACHER" ? "lg:grid-cols-6" : "lg:grid-cols-5"} bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800`}>
             <TabsTrigger value="classrooms" className="flex items-center space-x-2 data-[state=active]:bg-purple-100 dark:data-[state=active]:bg-purple-900/30 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-300">
               <Users className="h-4 w-4" />
               <span>Classrooms</span>
