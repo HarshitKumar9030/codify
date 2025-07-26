@@ -54,6 +54,11 @@ export async function POST(
       return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
     }
 
+    // Check if assignment is active (not revoked)
+    if (!assignment.isActive) {
+      return NextResponse.json({ error: 'This assignment has been revoked and is no longer accepting submissions' }, { status: 400 });
+    }
+
     // Check if user is enrolled in the classroom
     const enrollment = await prisma.enrollment.findFirst({
       where: {

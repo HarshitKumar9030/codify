@@ -7,13 +7,17 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { 
   BarChart3, 
+  TrendingUp, 
   Clock, 
   AlertTriangle, 
   Maximize2, 
   Minimize2, 
+  Users, 
   Trophy, 
   Target, 
   CheckCircle,
+  XCircle,
+  User
 } from 'lucide-react';
 
 interface AssignmentAnalytics {
@@ -159,162 +163,162 @@ export default function DashboardAnalytics({ classroomId, isTeacher }: Dashboard
         </div>
       )}
 
-      <div className={`space-y-6 ${isFullscreen ? 'max-w-none' : 'max-w-7xl mx-auto'}`}>
+      <div className={`space-y-6 ${isFullscreen ? 'max-w-none' : ''}`}>
         {/* Overall Statistics */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200 dark:border-blue-800 min-w-0">
-            <CardContent className="p-6 lg:p-8">
-              <div className="flex items-center justify-between min-w-0">
-                <div className="space-y-2 flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm font-medium text-blue-600 dark:text-blue-400 truncate">Total Assignments</p>
-                  <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-blue-700 dark:text-blue-300">{analytics.length}</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200 dark:border-blue-800">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Total Assignments</p>
+                  <p className="text-3xl font-bold text-blue-700 dark:text-blue-300">{analytics.length}</p>
                 </div>
-                <Target className="h-8 w-8 lg:h-10 lg:w-10 text-blue-500 flex-shrink-0 ml-2" />
+                <Target className="h-8 w-8 text-blue-500" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border-green-200 dark:border-green-800 min-w-0">
-            <CardContent className="p-6 lg:p-8">
-              <div className="flex items-center justify-between min-w-0">
-                <div className="space-y-2 flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm font-medium text-green-600 dark:text-green-400 truncate">Total Submissions</p>
-                  <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-green-700 dark:text-green-300">
+          <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border-green-200 dark:border-green-800">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-green-600 dark:text-green-400">Total Submissions</p>
+                  <p className="text-3xl font-bold text-green-700 dark:text-green-300">
                     {analytics.reduce((sum, a) => sum + a.totalSubmissions, 0)}
                   </p>
                 </div>
-                <CheckCircle className="h-8 w-8 lg:h-10 lg:w-10 text-green-500 flex-shrink-0 ml-2" />
+                <CheckCircle className="h-8 w-8 text-green-500" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border-purple-200 dark:border-purple-800 min-w-0">
-            <CardContent className="p-6 lg:p-8">
-              <div className="flex items-center justify-between min-w-0">
-                <div className="space-y-2 flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm font-medium text-purple-600 dark:text-purple-400 truncate">Avg Score</p>
-                  <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-purple-700 dark:text-purple-300">
+          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border-purple-200 dark:border-purple-800">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-purple-600 dark:text-purple-400">Avg Score</p>
+                  <p className="text-3xl font-bold text-purple-700 dark:text-purple-300">
                     {(analytics.reduce((sum, a) => sum + a.averageScore, 0) / analytics.length).toFixed(1)}
                   </p>
                 </div>
-                <Trophy className="h-8 w-8 lg:h-10 lg:w-10 text-purple-500 flex-shrink-0 ml-2" />
+                <Trophy className="h-8 w-8 text-purple-500" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 border-orange-200 dark:border-orange-800 min-w-0">
-            <CardContent className="p-6 lg:p-8">
-              <div className="flex items-center justify-between min-w-0">
-                <div className="space-y-2 flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm font-medium text-orange-600 dark:text-orange-400 truncate">Late Submissions</p>
-                  <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-orange-700 dark:text-orange-300">
+          <Card className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 border-orange-200 dark:border-orange-800">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-orange-600 dark:text-orange-400">Late Submissions</p>
+                  <p className="text-3xl font-bold text-orange-700 dark:text-orange-300">
                     {analytics.reduce((sum, a) => sum + a.lateSubmissions, 0)}
                   </p>
                 </div>
-                <Clock className="h-8 w-8 lg:h-10 lg:w-10 text-orange-500 flex-shrink-0 ml-2" />
+                <Clock className="h-8 w-8 text-orange-500" />
               </div>
             </CardContent>
           </Card>
         </div>
 
         {/* Assignment Details */}
-        <div className={`grid gap-6 lg:gap-8 ${isFullscreen ? 'grid-cols-1 2xl:grid-cols-2' : 'grid-cols-1'}`}>
+        <div className={`grid gap-6 ${isFullscreen ? 'grid-cols-1 xl:grid-cols-2' : 'grid-cols-1'}`}>
           {analytics.map((assignment) => (
-            <Card key={assignment.assignmentId} className="border-zinc-200 dark:border-zinc-800 shadow-lg min-w-0 w-full">
-              <CardHeader className="pb-4 lg:pb-6">
-                <div className="flex justify-between items-start gap-4">
-                  <div className="space-y-2 lg:space-y-3 flex-1 min-w-0">
-                    <CardTitle className="text-lg sm:text-xl lg:text-2xl font-bold text-zinc-900 dark:text-zinc-100 truncate">
+            <Card key={assignment.assignmentId} className="border-zinc-200 dark:border-zinc-800">
+              <CardHeader className="pb-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
                       {assignment.title}
                     </CardTitle>
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                      <Badge variant="outline" className="text-xs sm:text-sm px-2 py-1 sm:px-3 w-fit">
+                    <div className="flex items-center space-x-4 mt-2">
+                      <Badge variant="outline" className="text-xs">
                         {assignment.totalSubmissions} submissions
                       </Badge>
                       <Badge 
                         variant={assignment.completionRate >= 80 ? "default" : assignment.completionRate >= 60 ? "secondary" : "destructive"}
-                        className="text-xs sm:text-sm px-2 py-1 sm:px-3 w-fit"
+                        className="text-xs"
                       >
                         {assignment.completionRate.toFixed(0)}% completion
                       </Badge>
                     </div>
                   </div>
-                  <div className="text-right space-y-1 flex-shrink-0">
-                    <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-zinc-900 dark:text-zinc-100">
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
                       {assignment.averageScore.toFixed(1)}
                     </p>
-                    <p className="text-xs sm:text-sm text-zinc-500">avg score</p>
+                    <p className="text-sm text-zinc-500">avg score</p>
                   </div>
                 </div>
               </CardHeader>
               
-              <CardContent className="space-y-6 lg:space-y-8">
+              <CardContent className="space-y-6">
                 {/* Submission Status Breakdown */}
                 <div>
-                  <h4 className="font-semibold text-zinc-900 dark:text-zinc-100 mb-3 lg:mb-4 flex items-center">
-                    <BarChart3 className="h-4 w-4 lg:h-5 lg:w-5 mr-2" />
+                  <h4 className="font-semibold text-zinc-900 dark:text-zinc-100 mb-3 flex items-center">
+                    <BarChart3 className="h-4 w-4 mr-2" />
                     Submission Status
                   </h4>
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-                    <div className="text-center p-3 lg:p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg lg:rounded-xl min-w-0">
-                      <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-600 dark:text-blue-400">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                      <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                         {assignment.pendingSubmissions}
                       </p>
-                      <p className="text-xs sm:text-sm text-blue-600 dark:text-blue-400 mt-1 truncate">Pending</p>
+                      <p className="text-xs text-blue-600 dark:text-blue-400">Pending</p>
                     </div>
-                    <div className="text-center p-3 lg:p-4 bg-green-50 dark:bg-green-900/20 rounded-lg lg:rounded-xl min-w-0">
-                      <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-600 dark:text-green-400">
+                    <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                      <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                         {assignment.acceptedSubmissions}
                       </p>
-                      <p className="text-xs sm:text-sm text-green-600 dark:text-green-400 mt-1 truncate">Accepted</p>
+                      <p className="text-xs text-green-600 dark:text-green-400">Accepted</p>
                     </div>
-                    <div className="text-center p-3 lg:p-4 bg-red-50 dark:bg-red-900/20 rounded-lg lg:rounded-xl min-w-0">
-                      <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-red-600 dark:text-red-400">
+                    <div className="text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                      <p className="text-2xl font-bold text-red-600 dark:text-red-400">
                         {assignment.rejectedSubmissions}
                       </p>
-                      <p className="text-xs sm:text-sm text-red-600 dark:text-red-400 mt-1 truncate">Rejected</p>
+                      <p className="text-xs text-red-600 dark:text-red-400">Rejected</p>
                     </div>
-                    <div className="text-center p-3 lg:p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg lg:rounded-xl min-w-0">
-                      <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-orange-600 dark:text-orange-400">
+                    <div className="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+                      <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
                         {assignment.lateSubmissions}
                       </p>
-                      <p className="text-xs sm:text-sm text-orange-600 dark:text-orange-400 mt-1 truncate">Late</p>
+                      <p className="text-xs text-orange-600 dark:text-orange-400">Late</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Completion Progress */}
                 <div>
-                  <div className="flex justify-between items-center mb-3">
-                    <span className="text-base font-medium text-zinc-700 dark:text-zinc-300">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
                       Completion Rate
                     </span>
-                    <span className="text-base text-zinc-500">
+                    <span className="text-sm text-zinc-500">
                       {assignment.completionRate.toFixed(1)}%
                     </span>
                   </div>
                   <Progress 
                     value={assignment.completionRate} 
-                    className="h-3"
+                    className="h-2"
                   />
                 </div>
 
                 {/* Top Students */}
                 {assignment.topStudents && assignment.topStudents.length > 0 && (
                   <div>
-                    <h4 className="font-semibold text-zinc-900 dark:text-zinc-100 mb-3 lg:mb-4 flex items-center">
-                      <Trophy className="h-4 w-4 lg:h-5 lg:w-5 mr-2" />
+                    <h4 className="font-semibold text-zinc-900 dark:text-zinc-100 mb-3 flex items-center">
+                      <Trophy className="h-4 w-4 mr-2" />
                       Top Performers
                     </h4>
-                    <div className="space-y-2 lg:space-y-3">
+                    <div className="space-y-2">
                       {assignment.topStudents.map((student, index) => (
                         <div 
                           key={student.studentId}
-                          className="flex items-center justify-between p-3 lg:p-4 bg-zinc-50 dark:bg-zinc-800 rounded-lg lg:rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors min-w-0"
+                          className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg"
                         >
-                          <div className="flex items-center space-x-3 lg:space-x-4 flex-1 min-w-0">
+                          <div className="flex items-center space-x-3">
                             <div className={`
-                              w-6 h-6 lg:w-8 lg:h-8 rounded-full flex items-center justify-center text-xs lg:text-sm font-bold flex-shrink-0
+                              w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold
                               ${index === 0 ? 'bg-yellow-500 text-white' : 
                                 index === 1 ? 'bg-gray-400 text-white' : 
                                 index === 2 ? 'bg-orange-600 text-white' : 
@@ -322,28 +326,28 @@ export default function DashboardAnalytics({ classroomId, isTeacher }: Dashboard
                             `}>
                               {index + 1}
                             </div>
-                            <div className="space-y-1 flex-1 min-w-0">
-                              <p className="font-medium text-zinc-900 dark:text-zinc-100 text-sm lg:text-base truncate">
+                            <div>
+                              <p className="font-medium text-zinc-900 dark:text-zinc-100">
                                 {student.studentName}
                               </p>
-                              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                              <div className="flex items-center space-x-2">
                                 <Badge 
                                   variant={student.status === 'ACCEPTED' ? 'default' : 
                                           student.status === 'PENDING' ? 'secondary' : 'destructive'}
-                                  className="text-xs w-fit"
+                                  className="text-xs"
                                 >
                                   {student.status}
                                 </Badge>
                                 {student.isLate && (
-                                  <Badge variant="destructive" className="text-xs w-fit">
+                                  <Badge variant="destructive" className="text-xs">
                                     Late
                                   </Badge>
                                 )}
                               </div>
                             </div>
                           </div>
-                          <div className="text-right space-y-1 flex-shrink-0 ml-2">
-                            <p className="text-lg lg:text-xl font-bold text-zinc-900 dark:text-zinc-100">
+                          <div className="text-right">
+                            <p className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
                               {student.score}
                             </p>
                             <p className="text-xs text-zinc-500">

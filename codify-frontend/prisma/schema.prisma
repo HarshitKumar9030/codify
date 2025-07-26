@@ -132,6 +132,10 @@ model Assignment {
   penaltyPercentage    Float   @default(2.0) // Penalty per 12-hour period (default 2%)
   maxPenalty           Float   @default(50.0) // Maximum penalty (default 50%)
   
+  // Revocation settings
+  isActive    Boolean   @default(true)
+  revokedAt   DateTime?
+  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -215,6 +219,8 @@ enum NotificationType {
   ASSIGNMENT_CREATED
   ASSIGNMENT_DUE
   ASSIGNMENT_GRADED
+  ASSIGNMENT_REVOKED
+  ASSIGNMENT_REACTIVATED
   CLASSROOM_ANNOUNCEMENT
   GENERAL
 }

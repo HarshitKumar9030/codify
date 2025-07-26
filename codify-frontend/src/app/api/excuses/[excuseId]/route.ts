@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma';
 // POST - Review excuse (approve/reject)
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ excuseId: string }> }
+  { params }: { params: { excuseId: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -18,7 +18,7 @@ export async function POST(
       );
     }
 
-    const { excuseId } = await params;
+    const excuseId = params.excuseId;
     const { status, teacherNote } = await request.json();
 
     if (!['APPROVED', 'REJECTED'].includes(status)) {

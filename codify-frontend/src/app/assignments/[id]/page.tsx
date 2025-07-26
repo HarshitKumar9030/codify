@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Editor } from '@monaco-editor/react';
-import { ArrowLeft, Clock, User, BookOpen, CheckCircle, XCircle, AlertCircle, Trophy, Star, FileText, Calendar, AlertTriangle, Info } from 'lucide-react';
+import { ArrowLeft, Clock, User, BookOpen, CheckCircle, XCircle, AlertCircle, Trophy, Star, FileText, Calendar, AlertTriangle, Info, Loader2 } from 'lucide-react';
 import FileManager from '@/components/FileManager';
 import InteractiveExecutionPanel from '@/components/InteractiveExecutionPanel';
 
@@ -27,6 +27,8 @@ interface Assignment {
   allowLateSubmissions: boolean;
   penaltyPercentage: number;
   maxPenalty: number;
+  isActive: boolean;
+  revokedAt?: string;
   createdAt: string;
   classroom: {
     id: string;
@@ -90,6 +92,7 @@ export default function AssignmentPage() {
   const [submissionCount, setSubmissionCount] = useState<number>(0);
   const [showLeaderboard, setShowLeaderboard] = useState<boolean>(false);
   const [showNotificationModal, setShowNotificationModal] = useState<boolean>(false);
+  const [revocationLoading, setRevocationLoading] = useState<boolean>(false);
   const [notificationData, setNotificationData] = useState<{
     type: 'success' | 'warning' | 'error' | 'info';
     title: string;
@@ -341,6 +344,66 @@ export default function AssignmentPage() {
     setGradingFeedback('');
   };
 
+  const revokeAssignment = async () => {
+    if (!assignment) return;
+    
+    setRevocationLoading(true);
+    try {
+      const response = await fetch(`/api/assignments/${assignmentId}/revoke`, {
+        method: 'PATCH'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setAssignment({ ...assignment, isActive: false, revokedAt: new Date().toISOString() });
+        showNotification(
+          'success',
+          'Assignment Revoked',
+          data.message,
+          <XCircle className="h-5 w-5" />
+        );
+      } else {
+        const error = await response.json();
+        showNotification('error', 'Revocation Failed', error.error || 'Failed to revoke assignment');
+      }
+    } catch (error) {
+      console.error('Error revoking assignment:', error);
+      showNotification('error', 'Revocation Failed', 'Network error while revoking assignment');
+    } finally {
+      setRevocationLoading(false);
+    }
+  };
+
+  const reactivateAssignment = async () => {
+    if (!assignment) return;
+    
+    setRevocationLoading(true);
+    try {
+      const response = await fetch(`/api/assignments/${assignmentId}/revoke`, {
+        method: 'POST'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setAssignment({ ...assignment, isActive: true, revokedAt: undefined });
+        showNotification(
+          'success',
+          'Assignment Reactivated',
+          data.message,
+          <CheckCircle className="h-5 w-5" />
+        );
+      } else {
+        const error = await response.json();
+        showNotification('error', 'Reactivation Failed', error.error || 'Failed to reactivate assignment');
+      }
+    } catch (error) {
+      console.error('Error reactivating assignment:', error);
+      showNotification('error', 'Reactivation Failed', 'Network error while reactivating assignment');
+    } finally {
+      setRevocationLoading(false);
+    }
+  };
+
   const saveToFile = async (filename: string) => {
     if (!filename.trim() || !code.trim()) {
       showNotification('warning', 'Missing Information', 'Please provide both a filename and code content to save.');
@@ -511,6 +574,74 @@ export default function AssignmentPage() {
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
+              {/* Assignment Status and Actions */}
+              <Card className="bg-white dark:bg-zinc-900">
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <CardTitle>Assignment Status & Actions</CardTitle>
+                    <div className="flex items-center space-x-3">
+                      {assignment.isActive ? (
+                        <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                          Active
+                        </Badge>
+                      ) : (
+                        <Badge variant="destructive">
+                          Revoked
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {!assignment.isActive && assignment.revokedAt && (
+                      <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                        <div className="flex items-center space-x-2 text-red-800 dark:text-red-200">
+                          <XCircle className="h-4 w-4" />
+                          <span className="text-sm font-medium">
+                            Assignment revoked on {new Date(assignment.revokedAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <p className="text-xs text-red-600 dark:text-red-300 mt-1">
+                          Students can no longer view or submit to this assignment.
+                        </p>
+                      </div>
+                    )}
+                    
+                    <div className="flex space-x-3">
+                      {assignment.isActive ? (
+                        <Button
+                          onClick={revokeAssignment}
+                          disabled={revocationLoading}
+                          variant="destructive"
+                          className="flex items-center space-x-2"
+                        >
+                          {revocationLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <XCircle className="h-4 w-4" />
+                          )}
+                          <span>Revoke Assignment</span>
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={reactivateAssignment}
+                          disabled={revocationLoading}
+                          className="flex items-center space-x-2 bg-green-600 hover:bg-green-700"
+                        >
+                          {revocationLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <CheckCircle className="h-4 w-4" />
+                          )}
+                          <span>Reactivate Assignment</span>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
               <Card className="bg-white dark:bg-zinc-900">
                 <CardHeader>
                   <CardTitle>Assignment Details</CardTitle>

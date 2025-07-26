@@ -1167,7 +1167,7 @@ export default function Dashboard() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <DashboardAnalytics classroomId={classroom.id} />
+                      <DashboardAnalytics classroomId={classroom.id} isTeacher={true} />
                     </CardContent>
                   </Card>
                 ))}
