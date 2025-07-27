@@ -145,38 +145,41 @@ export default function ClassroomDetailsPage() {
   const isTeacher = classroom.currentUserRole === 'TEACHER';
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 p-6">
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 p-4 sm:p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+        <div className="flex flex-col space-y-4 lg:flex-row lg:items-center lg:justify-between lg:space-y-0">
+          <div className="flex flex-col space-y-3 sm:space-y-4">
             <Button 
               variant="outline" 
               size="sm"
               onClick={() => router.push('/dashboard')}
-              className="hover:bg-purple-50 dark:hover:bg-purple-900/20"
+              className="self-start hover:bg-purple-50 dark:hover:bg-purple-900/20"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
+              <span className="hidden sm:inline">Back to Dashboard</span>
+              <span className="sm:hidden">Back</span>
             </Button>
-            <div>
-              <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">
+            <div className="min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100 break-words">
                 {classroom.name}
               </h1>
               {classroom.description && (
-                <p className="text-zinc-600 dark:text-zinc-400 mt-1">
+                <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 mt-1 break-words">
                   {classroom.description}
                 </p>
               )}
             </div>
           </div>
-          <div className="flex items-center space-x-4">
-            <Badge variant="outline" className="px-3 py-1">
-              Code: {classroom.code}
+          
+          {/* Badges section */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+            <Badge variant="outline" className="px-3 py-1 text-xs sm:text-sm">
+              <span className="hidden sm:inline">Code: </span>{classroom.code}
             </Badge>
             <Badge 
               variant={isTeacher ? "default" : "secondary"}
-              className={isTeacher ? "bg-purple-600 hover:bg-purple-700" : ""}
+              className={`text-xs sm:text-sm ${isTeacher ? "bg-purple-600 hover:bg-purple-700" : ""}`}
             >
               {isTeacher ? (
                 <>

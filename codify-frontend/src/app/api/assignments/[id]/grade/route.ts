@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
-// POST - Grade a submission (teacher only)
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -65,7 +64,7 @@ export async function POST(
     let finalScore = score;
     let originalScore = score;
     
-    if (score !== undefined && score !== null && submission.isLate && submission.latePenalty > 0) {
+    if (score !== undefined && score !== null && submission.isLate && submission.latePenalty && submission.latePenalty > 0) {
       // Apply late penalty to the score
       const penaltyDeduction = (score * submission.latePenalty) / 100;
       finalScore = Math.max(0, score - penaltyDeduction);

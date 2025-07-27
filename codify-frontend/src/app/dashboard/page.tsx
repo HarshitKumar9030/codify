@@ -382,22 +382,31 @@ export default function Dashboard() {
       <header className="border-b border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-4">
+            {/* Left side - Logo and Badge */}
+            <div className="flex items-center space-x-3 sm:space-x-4">
               <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-zinc-600 rounded-lg flex items-center justify-center">
-                  <Code className="h-5 w-5 text-white" />
+                <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-r from-purple-600 to-zinc-600 rounded-lg flex items-center justify-center">
+                  <Code className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                 </div>
-                <span className="text-xl font-bold bg-gradient-to-r from-purple-600 to-zinc-600 bg-clip-text text-transparent">
+                <span className="text-lg sm:text-xl font-bold bg-gradient-to-r from-purple-600 to-zinc-600 bg-clip-text text-transparent">
                   CodiFY
                 </span>
               </div>
-              <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+              <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 hidden sm:inline-flex">
                 {session?.user?.role === "TEACHER" ? "Teacher" : "Student"}
               </Badge>
             </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-zinc-600 dark:text-zinc-400 font-medium">
+            
+            {/* Right side - User info and actions */}
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              {/* Welcome text - hidden on small screens */}
+              <span className="text-sm text-zinc-600 dark:text-zinc-400 font-medium hidden md:block">
                 Welcome, {session?.user?.name || "User"}
+              </span>
+              
+              {/* User name - short version for small screens */}
+              <span className="text-sm text-zinc-600 dark:text-zinc-400 font-medium md:hidden">
+                {session?.user?.name?.split(' ')[0] || "User"}
               </span>
               
               {/* Notifications Panel */}
@@ -408,16 +417,16 @@ export default function Dashboard() {
                   onClick={() => setNotificationsPanelOpen(!notificationsPanelOpen)}
                   className="relative p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 >
-                  <Bell className="h-5 w-5 text-zinc-600 dark:text-zinc-400" />
+                  <Bell className="h-4 w-4 sm:h-5 sm:w-5 text-zinc-600 dark:text-zinc-400" />
                   {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center text-[10px] sm:text-xs">
                       {unreadCount > 99 ? "99+" : unreadCount}
                     </span>
                   )}
                 </Button>
                 
                 {notificationsPanelOpen && (
-                  <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl z-50 max-h-96 overflow-y-auto">
+                  <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl z-50 max-h-96 overflow-y-auto">
                     <div className="p-3 border-b border-zinc-200 dark:border-zinc-800">
                       <div className="flex items-center justify-between">
                         <div>
@@ -492,10 +501,10 @@ export default function Dashboard() {
                 variant="outline"
                 size="sm"
                 onClick={() => router.push("/api/auth/signout")}
-                className="flex items-center space-x-2 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                className="flex items-center space-x-1 sm:space-x-2 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800"
               >
                 <LogOut className="h-4 w-4" />
-                <span>Sign Out</span>
+                <span className="hidden sm:inline">Sign Out</span>
               </Button>
             </div>
           </div>
@@ -503,42 +512,50 @@ export default function Dashboard() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className={`grid w-full ${session?.user?.role === "TEACHER" ? "grid-cols-6" : "grid-cols-5"} lg:w-fit ${session?.user?.role === "TEACHER" ? "lg:grid-cols-6" : "lg:grid-cols-5"} bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800`}>
-            <TabsTrigger value="classrooms" className="flex items-center space-x-2 data-[state=active]:bg-purple-100 dark:data-[state=active]:bg-purple-900/30 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-300">
-              <Users className="h-4 w-4" />
-              <span>Classrooms</span>
-            </TabsTrigger>
-            <TabsTrigger value="files" className="flex items-center space-x-2 data-[state=active]:bg-purple-100 dark:data-[state=active]:bg-purple-900/30 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-300">
-              <FileText className="h-4 w-4" />
-              <span>Files</span>
-            </TabsTrigger>
-            <TabsTrigger value="code" className="flex items-center space-x-2 data-[state=active]:bg-purple-100 dark:data-[state=active]:bg-purple-900/30 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-300">
-              <Code className="h-4 w-4" />
-              <span>Code Editor</span>
-            </TabsTrigger>
-            <TabsTrigger value="assignments" className="flex items-center space-x-2 data-[state=active]:bg-purple-100 dark:data-[state=active]:bg-purple-900/30 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-300">
-              <BookOpen className="h-4 w-4" />
-              <span>Assignments</span>
-            </TabsTrigger>
-            {session?.user?.role === "TEACHER" && (
-              <TabsTrigger value="analytics" className="flex items-center space-x-2 data-[state=active]:bg-purple-100 dark:data-[state=active]:bg-purple-900/30 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-300">
-                <BarChart3 className="h-4 w-4" />
-                <span>Analytics</span>
+          <div className="overflow-x-auto">
+            <TabsList className={`grid w-full min-w-fit ${session?.user?.role === "TEACHER" ? "grid-cols-3 sm:grid-cols-6" : "grid-cols-3 sm:grid-cols-5"} lg:w-fit ${session?.user?.role === "TEACHER" ? "lg:grid-cols-6" : "lg:grid-cols-5"} bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800`}>
+              <TabsTrigger value="classrooms" className="flex items-center space-x-1 sm:space-x-2 data-[state=active]:bg-purple-100 dark:data-[state=active]:bg-purple-900/30 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-300 text-xs sm:text-sm">
+                <Users className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Classrooms</span>
+                <span className="sm:hidden">Classes</span>
               </TabsTrigger>
-            )}
-            <TabsTrigger value="leaderboard" className="flex items-center space-x-2 data-[state=active]:bg-purple-100 dark:data-[state=active]:bg-purple-900/30 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-300">
-              <GraduationCap className="h-4 w-4" />
-              <span>Leaderboard</span>
-            </TabsTrigger>
-          </TabsList>
+              <TabsTrigger value="files" className="flex items-center space-x-1 sm:space-x-2 data-[state=active]:bg-purple-100 dark:data-[state=active]:bg-purple-900/30 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-300 text-xs sm:text-sm">
+                <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Files</span>
+                <span className="sm:hidden">Files</span>
+              </TabsTrigger>
+              <TabsTrigger value="code" className="flex items-center space-x-1 sm:space-x-2 data-[state=active]:bg-purple-100 dark:data-[state=active]:bg-purple-900/30 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-300 text-xs sm:text-sm">
+                <Code className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Code Editor</span>
+                <span className="sm:hidden">Code</span>
+              </TabsTrigger>
+              <TabsTrigger value="assignments" className="flex items-center space-x-1 sm:space-x-2 data-[state=active]:bg-purple-100 dark:data-[state=active]:bg-purple-900/30 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-300 text-xs sm:text-sm">
+                <BookOpen className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Assignments</span>
+                <span className="sm:hidden">Tasks</span>
+              </TabsTrigger>
+              {session?.user?.role === "TEACHER" && (
+                <TabsTrigger value="analytics" className="flex items-center space-x-1 sm:space-x-2 data-[state=active]:bg-purple-100 dark:data-[state=active]:bg-purple-900/30 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-300 text-xs sm:text-sm">
+                  <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">Analytics</span>
+                  <span className="sm:hidden">Stats</span>
+                </TabsTrigger>
+              )}
+              <TabsTrigger value="leaderboard" className="flex items-center space-x-1 sm:space-x-2 data-[state=active]:bg-purple-100 dark:data-[state=active]:bg-purple-900/30 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-300 text-xs sm:text-sm">
+                <GraduationCap className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Leaderboard</span>
+                <span className="sm:hidden">Board</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Classrooms Tab */}
           <TabsContent value="classrooms" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">My Classrooms</h1>
-              <div className="flex space-x-3">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+              <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100">My Classrooms</h1>
+              <div className="flex flex-col sm:flex-row gap-3">
                 {session?.user?.role === "TEACHER" && (
                   <Dialog open={createClassroomOpen} onOpenChange={setCreateClassroomOpen}>
                     <DialogTrigger asChild>
