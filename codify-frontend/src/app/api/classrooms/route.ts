@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma, withPrismaRetry } from "@/lib/prisma";
+import { prisma, withFreshPrismaClient } from "@/lib/prisma";
 
 function generateClassroomCode(): string {
   // Generate 8-digit alphanumeric code
@@ -34,37 +34,46 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate unique classroom code
-    let classroomCode: string;
+    // Generate unique classroom code using fresh client approach
+    let classroomCode: string = '';
     let isUnique = false;
     let attempts = 0;
     
     while (!isUnique && attempts < 10) {
       classroomCode = generateClassroomCode();
-      const existing = await withPrismaRetry(async () => {
-        return await prisma.classroom.findUnique({
-          where: { code: classroomCode }
+      
+      try {
+        const existing = await withFreshPrismaClient(async (client) => {
+          return await client.classroom.findUnique({
+            where: { code: classroomCode }
+          });
         });
-      });
-      if (!existing) {
-        isUnique = true;
+        
+        if (!existing) {
+          isUnique = true;
+        }
+      } catch (error) {
+        console.error(`Failed to check classroom code uniqueness (attempt ${attempts + 1}):`, error);
+        // Continue with the loop to try again
       }
+      
       attempts++;
     }
 
     if (!isUnique) {
       return NextResponse.json(
-        { error: "Failed to generate unique classroom code" },
+        { error: "Failed to generate unique classroom code after multiple attempts" },
         { status: 500 }
       );
     }
 
-    const classroom = await withPrismaRetry(async () => {
-      return await prisma.classroom.create({
+    // Create classroom using fresh client
+    const classroom = await withFreshPrismaClient(async (client) => {
+      return await client.classroom.create({
         data: {
           name,
           description: description || "",
-          code: classroomCode!,
+          code: classroomCode,
           teacherId: session.user.id,
         },
         include: {

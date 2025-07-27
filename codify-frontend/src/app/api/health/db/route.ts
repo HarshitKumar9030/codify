@@ -1,22 +1,27 @@
 import { NextResponse } from 'next/server';
-import { prisma, withPrismaRetry } from '@/lib/prisma';
+import { withFreshPrismaClient, withPrismaRetry } from '@/lib/prisma';
 
 export async function GET() {
   try {
-    // Test database connection
-    const connectionTest = await withPrismaRetry(async () => {
-      await prisma.$connect();
-      return await prisma.$queryRaw`SELECT 1 as result`;
-    }, 2, 500); // Quick retry for health check
+    // Test database connection with fresh client
+    const result = await withFreshPrismaClient(async (client) => {
+      // Simple connection test
+      const userCount = await client.user.count();
+      const classroomCount = await client.classroom.count();
+      
+      return {
+        userCount,
+        classroomCount,
+        connectionStatus: 'active'
+      };
+    });
 
-    const dbInfo = {
+    return NextResponse.json({
       status: 'connected',
       timestamp: new Date().toISOString(),
-      connectionTest: connectionTest,
-      prismaVersion: '6.11.1' // Static version for now
-    };
-
-    return NextResponse.json(dbInfo);
+      data: result,
+      message: 'Database connection is healthy'
+    });
   } catch (error) {
     console.error('Database health check failed:', error);
     
@@ -24,39 +29,42 @@ export async function GET() {
       {
         status: 'disconnected',
         timestamp: new Date().toISOString(),
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
+        message: 'Database connection failed'
       },
       { status: 503 }
     );
   }
 }
 
-// POST - Force reconnection
+// POST - Test retry logic
 export async function POST() {
   try {
-    console.log('Forcing database reconnection...');
+    console.log('Testing database with retry logic...');
     
-    // Disconnect and reconnect
-    await prisma.$disconnect();
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
-    await prisma.$connect();
-    
-    // Test the connection
-    await prisma.$queryRaw`SELECT 1 as result`;
+    const result = await withPrismaRetry(async () => {
+      // Use a fresh client for this test
+      return await withFreshPrismaClient(async (client) => {
+        const userCount = await client.user.count();
+        return { userCount, status: 'retry_test_passed' };
+      });
+    });
     
     return NextResponse.json({
-      status: 'reconnected',
+      status: 'success',
       timestamp: new Date().toISOString(),
-      message: 'Database connection reset successfully'
+      result,
+      message: 'Retry logic test completed successfully'
     });
   } catch (error) {
-    console.error('Database reconnection failed:', error);
+    console.error('Retry logic test failed:', error);
     
     return NextResponse.json(
       {
         status: 'failed',
         timestamp: new Date().toISOString(),
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
+        message: 'Retry logic test failed'
       },
       { status: 503 }
     );
