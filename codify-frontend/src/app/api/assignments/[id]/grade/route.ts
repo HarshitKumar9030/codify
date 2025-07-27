@@ -83,25 +83,44 @@ export async function POST(
       }
     });
 
-    // Create a notification for the student
+    // Create notifications for both student and teacher
     try {
+      // Notification for the student
       await prisma.notification.create({
         data: {
           userId: submission.studentId,
           type: 'ASSIGNMENT_GRADED',
           title: `Assignment "${assignment.title}" has been graded`,
-          message: `Your submission has been ${status.toLowerCase()}. ${score !== undefined ? `Score: ${finalScore}${submission.isLate && submission.latePenalty > 0 ? ` (${originalScore} - ${submission.latePenalty}% late penalty)` : ''}` : ''} ${feedback ? `Feedback: ${feedback}` : ''}`,
+          message: `Your submission has been ${status.toLowerCase()}. ${score !== undefined ? `Score: ${finalScore}${submission.isLate && submission.latePenalty && submission.latePenalty > 0 ? ` (${originalScore} - ${submission.latePenalty}% late penalty)` : ''}` : ''} ${feedback ? `Feedback: ${feedback}` : ''}`,
           data: JSON.stringify({
             assignmentId,
             submissionId,
             status,
-            score
+            score,
+            type: 'graded_submission'
+          })
+        }
+      });
+
+      // Notification for the teacher (completion confirmation)
+      await prisma.notification.create({
+        data: {
+          userId: currentUser.id,
+          type: 'GENERAL',
+          title: `Grading completed for "${assignment.title}"`,
+          message: `You have successfully graded a submission by ${currentUser.name || 'a student'}. Status: ${status}, Score: ${finalScore || 'Not scored'}`,
+          data: JSON.stringify({
+            assignmentId,
+            submissionId,
+            studentId: submission.studentId,
+            status,
+            score,
+            type: 'grading_completed'
           })
         }
       });
     } catch (notificationError) {
       console.error('Failed to create notification:', notificationError);
-      // Continue even if notification fails
     }
 
     return NextResponse.json({

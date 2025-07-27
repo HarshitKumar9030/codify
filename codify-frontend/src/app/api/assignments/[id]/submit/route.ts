@@ -199,6 +199,30 @@ export async function POST(
       });
     }
 
+    // Create notification for the teacher about new submission
+    try {
+      await prisma.notification.create({
+        data: {
+          userId: assignment.teacherId,
+          type: 'GENERAL',
+          title: `New submission for "${assignment.title}"`,
+          message: `${currentUser.name || 'A student'} has submitted an assignment${isLate ? ' (LATE)' : ''}.${latePenalty > 0 ? ` Late penalty: ${latePenalty}%` : ''}`,
+          data: JSON.stringify({
+            assignmentId,
+            submissionId: submission.id,
+            studentId: currentUser.id,
+            studentName: currentUser.name,
+            isLate: isLate || false,
+            latePenalty: latePenalty || 0,
+            type: 'submission_received'
+          })
+        }
+      });
+    } catch (notificationError) {
+      console.error('Failed to create teacher notification:', notificationError);
+      // Continue even if notification fails
+    }
+
     return NextResponse.json({
       success: true,
       submission,

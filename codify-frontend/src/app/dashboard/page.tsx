@@ -36,6 +36,7 @@ import { useTheme } from "next-themes";
 import InteractiveExecutionPanel from "@/components/InteractiveExecutionPanel";
 import FileEditor from "@/components/FileEditor";
 import DashboardAnalytics from "@/components/DashboardAnalytics";
+import DirectMessagesPanel from "@/components/DirectMessagesPanel";
 
 interface Classroom {
   id: string;
@@ -515,7 +516,7 @@ export default function Dashboard() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <div className="overflow-x-auto">
-            <TabsList className={`grid w-full min-w-fit ${session?.user?.role === "TEACHER" ? "grid-cols-3 sm:grid-cols-6" : "grid-cols-3 sm:grid-cols-5"} lg:w-fit ${session?.user?.role === "TEACHER" ? "lg:grid-cols-6" : "lg:grid-cols-5"} bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800`}>
+            <TabsList className={`grid w-full min-w-fit ${session?.user?.role === "TEACHER" ? "grid-cols-3 sm:grid-cols-7" : "grid-cols-3 sm:grid-cols-6"} lg:w-fit ${session?.user?.role === "TEACHER" ? "lg:grid-cols-7" : "lg:grid-cols-6"} bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800`}>
               <TabsTrigger value="classrooms" className="flex items-center space-x-1 sm:space-x-2 data-[state=active]:bg-purple-100 dark:data-[state=active]:bg-purple-900/30 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-300 text-xs sm:text-sm">
                 <Users className="h-3 w-3 sm:h-4 sm:w-4" />
                 <span className="hidden sm:inline">Classrooms</span>
@@ -535,6 +536,11 @@ export default function Dashboard() {
                 <BookOpen className="h-3 w-3 sm:h-4 sm:w-4" />
                 <span className="hidden sm:inline">Assignments</span>
                 <span className="sm:hidden">Tasks</span>
+              </TabsTrigger>
+              <TabsTrigger value="messages" className="flex items-center space-x-1 sm:space-x-2 data-[state=active]:bg-purple-100 dark:data-[state=active]:bg-purple-900/30 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-300 text-xs sm:text-sm">
+                <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Messages</span>
+                <span className="sm:hidden">Msgs</span>
               </TabsTrigger>
               {session?.user?.role === "TEACHER" && (
                 <TabsTrigger value="analytics" className="flex items-center space-x-1 sm:space-x-2 data-[state=active]:bg-purple-100 dark:data-[state=active]:bg-purple-900/30 data-[state=active]:text-purple-700 dark:data-[state=active]:text-purple-300 text-xs sm:text-sm">
@@ -733,6 +739,20 @@ export default function Dashboard() {
 
             {/* Interactive Execution Panel */}
             <InteractiveExecutionPanel />
+          </TabsContent>
+
+          {/* Messages Tab */}
+          <TabsContent value="messages" className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+              <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100">Direct Messages</h1>
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                {session?.user?.role === "TEACHER" 
+                  ? "View messages from students" 
+                  : "Send messages to your teachers from classroom pages"
+                }
+              </p>
+            </div>
+            <DirectMessagesPanel />
           </TabsContent>
 
           {/* Assignments Tab */}

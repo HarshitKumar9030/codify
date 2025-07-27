@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, Users, GraduationCap, MessageSquare, Send, User } from 'lucide-react';
 import Chat from '@/components/Chat';
+import DirectMessageDialog from '@/components/DirectMessageDialog';
 
 interface User {
   id: string;
@@ -226,9 +227,27 @@ export default function ClassroomDetailsPage() {
                         </p>
                       </div>
                     </div>
-                    <Badge variant="outline" className="text-purple-600 border-purple-200 dark:border-purple-800">
-                      Teacher
-                    </Badge>
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="outline" className="text-purple-600 border-purple-200 dark:border-purple-800">
+                        Teacher
+                      </Badge>
+                      {!isTeacher && (
+                        <DirectMessageDialog
+                          teacher={member.user}
+                          classroomId={classroomId}
+                          triggerButton={
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                            >
+                              <MessageSquare className="h-3 w-3 mr-1" />
+                              Message
+                            </Button>
+                          }
+                        />
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
