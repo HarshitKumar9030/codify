@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
 import AuthLoading from "@/components/AuthLoading";
 import Link from "next/link";
-import { Eye, EyeOff, UserPlus, ArrowLeft, Users, BookOpen } from "lucide-react";
+import { Eye, EyeOff, UserPlus, ArrowLeft, Users, BookOpen, AlertCircle } from "lucide-react";
+import PasswordStrengthIndicator from "@/components/PasswordStrengthIndicator";
+import { validatePassword } from "@/utils/passwordValidation";
 
 export default function SignUp() {
   const { isAuthenticated, isLoading: authLoading } = useAuthRedirect();
@@ -18,12 +20,50 @@ export default function SignUp() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<{[key: string]: string}>({});
+  const [showPasswordStrength, setShowPasswordStrength] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError("");
+    setFieldErrors({});
+
+    // Client-side validation
+    const newFieldErrors: {[key: string]: string} = {};
+
+    // Validate name
+    if (!formData.name.trim()) {
+      newFieldErrors.name = "Name is required";
+    } else if (formData.name.trim().length < 2) {
+      newFieldErrors.name = "Name must be at least 2 characters long";
+    }
+
+    // Validate email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!formData.email.trim()) {
+      newFieldErrors.email = "Email is required";
+    } else if (!emailRegex.test(formData.email)) {
+      newFieldErrors.email = "Please enter a valid email address";
+    }
+
+    // Validate password
+    if (!formData.password) {
+      newFieldErrors.password = "Password is required";
+    } else {
+      const passwordValidation = validatePassword(formData.password);
+      if (!passwordValidation.isValid) {
+        newFieldErrors.password = passwordValidation.errors[0]; // Show first error
+      }
+    }
+
+    // If there are field errors, don't submit
+    if (Object.keys(newFieldErrors).length > 0) {
+      setFieldErrors(newFieldErrors);
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const response = await fetch("/api/auth/signup", {
@@ -34,24 +74,57 @@ export default function SignUp() {
         body: JSON.stringify(formData),
       });
 
+      const data = await response.json();
+
       if (response.ok) {
-        router.push("/auth/signin?message=Account created successfully");
+        router.push("/auth/signin?message=" + encodeURIComponent(data.message || "Account created successfully"));
       } else {
-        const data = await response.json();
-        setError(data.error || "Something went wrong");
+        // Handle different types of errors
+        if (response.status === 409) {
+          // Email already exists - show as field error
+          setFieldErrors({ email: data.error || "An account with this email already exists" });
+        } else if (data.details && Array.isArray(data.details)) {
+          // Password validation errors from backend
+          setError(data.error + ": " + data.details.join(", "));
+        } else if (response.status === 400 && data.error.includes("email")) {
+          // Email validation error
+          setFieldErrors({ email: data.error });
+        } else if (response.status === 400 && data.error.includes("Password")) {
+          // Password validation error
+          setFieldErrors({ password: data.error });
+        } else if (response.status === 400 && data.error.includes("Name")) {
+          // Name validation error
+          setFieldErrors({ name: data.error });
+        } else {
+          setError(data.error || "Something went wrong");
+        }
       }
     } catch {
-      setError("An error occurred. Please try again.");
+      setError("Network error. Please check your connection and try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: value,
     });
+
+    // Clear field error when user starts typing
+    if (fieldErrors[name]) {
+      setFieldErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+
+    // Show password strength indicator when user starts typing password
+    if (name === 'password') {
+      setShowPasswordStrength(value.length > 0);
+    }
   };
 
   // Show loading screen while checking authentication
@@ -95,8 +168,9 @@ export default function SignUp() {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg text-sm">
-                {error}
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg text-sm flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <span>{error}</span>
               </div>
             )}
 
@@ -144,9 +218,17 @@ export default function SignUp() {
                 value={formData.name}
                 onChange={handleInputChange}
                 required
-                className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
+                  fieldErrors.name ? 'border-red-500 dark:border-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                }`}
                 placeholder="Enter your full name"
               />
+              {fieldErrors.name && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  {fieldErrors.name}
+                </p>
+              )}
             </div>
 
             <div>
@@ -160,9 +242,27 @@ export default function SignUp() {
                 value={formData.email}
                 onChange={handleInputChange}
                 required
-                className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
+                  fieldErrors.email ? 'border-red-500 dark:border-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                }`}
                 placeholder="Enter your email"
               />
+              {fieldErrors.email && (
+                <div className="mt-1">
+                  <p className="text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {fieldErrors.email}
+                  </p>
+                  {fieldErrors.email.includes("already exists") && (
+                    <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
+                      If this is your email, try{" "}
+                      <Link href="/auth/signin" className="text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 underline">
+                        signing in instead
+                      </Link>
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div>
@@ -177,8 +277,10 @@ export default function SignUp() {
                   value={formData.password}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-3 py-2 pr-10 border border-zinc-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="Create a password"
+                  className={`w-full px-3 py-2 pr-10 border rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
+                    fieldErrors.password ? 'border-red-500 dark:border-red-500' : 'border-zinc-300 dark:border-zinc-600'
+                  }`}
+                  placeholder="Create a strong password"
                 />
                 <button
                   type="button"
@@ -188,6 +290,15 @@ export default function SignUp() {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              {fieldErrors.password && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  {fieldErrors.password}
+                </p>
+              )}
+              {showPasswordStrength && (
+                <PasswordStrengthIndicator password={formData.password} />
+              )}
             </div>
 
             <button

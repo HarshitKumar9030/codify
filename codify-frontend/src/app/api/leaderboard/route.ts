@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { prisma, withPrismaRetry } from '@/lib/prisma';
 
 // GET - Get leaderboard data for all classrooms a student is enrolled in
 export async function GET() {
@@ -13,8 +13,10 @@ export async function GET() {
     }
 
     // Get current user
-    const currentUser = await prisma.user.findUnique({
-      where: { email: session.user.email }
+    const currentUser = await withPrismaRetry(async () => {
+      return await prisma.user.findUnique({
+        where: { email: session.user.email }
+      });
     });
 
     if (!currentUser) {
@@ -23,20 +25,22 @@ export async function GET() {
 
     // Students can see leaderboards for classrooms they're enrolled in
     if (currentUser.role === 'STUDENT') {
-      const enrollments = await prisma.enrollment.findMany({
-        where: { studentId: currentUser.id },
-        include: {
-          classroom: {
-            include: {
-              assignments: {
-                include: {
-                  submissions: {
-                    include: {
-                      student: {
-                        select: {
-                          id: true,
-                          name: true,
-                          email: true
+      const enrollments = await withPrismaRetry(async () => {
+        return await prisma.enrollment.findMany({
+          where: { studentId: currentUser.id },
+          include: {
+            classroom: {
+              include: {
+                assignments: {
+                  include: {
+                    submissions: {
+                      include: {
+                        student: {
+                          select: {
+                            id: true,
+                            name: true,
+                            email: true
+                          }
                         }
                       }
                     }
@@ -45,7 +49,7 @@ export async function GET() {
               }
             }
           }
-        }
+        });
       });
 
       const leaderboardData = enrollments.map(enrollment => {

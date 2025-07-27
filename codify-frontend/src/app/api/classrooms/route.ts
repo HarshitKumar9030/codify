@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { prisma, withPrismaRetry } from "@/lib/prisma";
 
 function generateClassroomCode(): string {
   // Generate 8-digit alphanumeric code
@@ -35,14 +35,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate unique classroom code
-    let classroomCode;
+    let classroomCode: string;
     let isUnique = false;
     let attempts = 0;
     
     while (!isUnique && attempts < 10) {
       classroomCode = generateClassroomCode();
-      const existing = await prisma.classroom.findUnique({
-        where: { code: classroomCode }
+      const existing = await withPrismaRetry(async () => {
+        return await prisma.classroom.findUnique({
+          where: { code: classroomCode }
+        });
       });
       if (!existing) {
         isUnique = true;
@@ -57,28 +59,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const classroom = await prisma.classroom.create({
-      data: {
-        name,
-        description: description || "",
-        code: classroomCode!,
-        teacherId: session.user.id,
-      },
-      include: {
-        teacher: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          }
+    const classroom = await withPrismaRetry(async () => {
+      return await prisma.classroom.create({
+        data: {
+          name,
+          description: description || "",
+          code: classroomCode!,
+          teacherId: session.user.id,
         },
-        _count: {
-          select: {
-            enrollments: true,
-            assignments: true,
+        include: {
+          teacher: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            }
+          },
+          _count: {
+            select: {
+              enrollments: true,
+              assignments: true,
+            }
           }
         }
-      }
+      });
     });
 
     return NextResponse.json({
