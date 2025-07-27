@@ -684,42 +684,44 @@ License information.
 
   return (
     <>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
+      <div className="flex flex-col xl:grid xl:grid-cols-2 gap-4 sm:gap-6 h-full">
       {/* File Manager Panel */}
-      <Card className="bg-white dark:bg-zinc-900">
+      <Card className="bg-white dark:bg-zinc-900 order-1 xl:order-none">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center">
-              <FileText className="h-5 w-5 mr-2" />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <CardTitle className="flex items-center text-lg sm:text-xl">
+              <FileText className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
               File Manager
               
               {/* Keyboard Shortcuts Help */}
               <Button
                 size="sm"
                 variant="ghost"
-                className="ml-2 h-8 w-8 p-0 hover:bg-purple-100 dark:hover:bg-purple-900/30"
+                className="ml-2 h-7 w-7 sm:h-8 sm:w-8 p-0 hover:bg-purple-100 dark:hover:bg-purple-900/30"
                 onClick={() => setShowHelpDialog(true)}
                 title="Keyboard Shortcuts Help"
               >
-                <HelpCircle className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                <HelpCircle className="w-3 h-3 sm:w-4 sm:h-4 text-purple-600 dark:text-purple-400" />
               </Button>
             </CardTitle>
-            <div className="flex space-x-2">
+            <div className="flex flex-wrap gap-2">
               <Button
                 size="sm"
                 onClick={() => loadFiles(currentPath)}
                 variant="outline"
+                className="h-8 px-2 sm:px-3"
               >
-                <RefreshCw className="h-4 w-4" />
+                <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline ml-1">Refresh</span>
               </Button>
               <Dialog open={isCreateFileOpen} onOpenChange={setIsCreateFileOpen}>
                 <DialogTrigger asChild>
-                  <Button size="sm" variant="outline" title="Create new file (Ctrl+N)">
-                    <Plus className="h-4 w-4 mr-1" />
-                    File
+                  <Button size="sm" variant="outline" title="Create new file (Ctrl+N)" className="h-8 px-2 sm:px-3">
+                    <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline ml-1">File</span>
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle className="flex items-center">
                       <Plus className="w-5 h-5 mr-2 text-purple-600" />
@@ -730,7 +732,7 @@ License information.
                     {/* Template Selection */}
                     <div>
                       <Label className="text-sm font-medium">Choose a Template (Optional)</Label>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-2">
                         <button
                           type="button"
                           onClick={() => {
@@ -824,11 +826,11 @@ License information.
                     </div>
 
                     {/* Actions */}
-                    <div className="flex justify-between items-center">
-                      <div className="text-xs text-zinc-500">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                      <div className="text-xs text-zinc-500 order-2 sm:order-1">
                         💡 Tip: Press Enter to create quickly
                       </div>
-                      <div className="flex space-x-2">
+                      <div className="flex flex-col sm:flex-row gap-2 order-1 sm:order-2">
                         <Button 
                           variant="outline" 
                           onClick={() => {
@@ -836,6 +838,7 @@ License information.
                             setSelectedFileTemplate('');
                             setNewFileName('');
                           }}
+                          className="w-full sm:w-auto"
                         >
                           Cancel
                         </Button>
@@ -846,7 +849,7 @@ License information.
                             newFileName.length > 50 || 
                             (newFileName.length > 0 && !/^[a-zA-Z0-9._-]+$/.test(newFileName))
                           }
-                          className="bg-purple-600 hover:bg-purple-700"
+                          className="bg-purple-600 hover:bg-purple-700 w-full sm:w-auto"
                         >
                           <Plus className="w-4 h-4 mr-1" />
                           Create File
@@ -858,12 +861,12 @@ License information.
               </Dialog>
               <Dialog open={isCreateFolderOpen} onOpenChange={setIsCreateFolderOpen}>
                 <DialogTrigger asChild>
-                  <Button size="sm" variant="outline" title="Create new folder (Ctrl+Shift+N)">
-                    <FolderPlus className="h-4 w-4 mr-1" />
-                    Folder
+                  <Button size="sm" variant="outline" title="Create new folder (Ctrl+Shift+N)" className="h-8 px-2 sm:px-3">
+                    <FolderPlus className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline ml-1">Folder</span>
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-md">
+                <DialogContent className="max-w-md mx-4">
                   <DialogHeader>
                     <DialogTitle className="flex items-center">
                       <FolderPlus className="w-5 h-5 mr-2 text-purple-600" />
@@ -891,20 +894,21 @@ License information.
                     </div>
 
                     {/* Actions */}
-                    <div className="flex justify-end space-x-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <Button 
                         variant="outline" 
                         onClick={() => {
                           setIsCreateFolderOpen(false);
                           setNewFolderName('');
                         }}
+                        className="w-full sm:w-auto"
                       >
                         Cancel
                       </Button>
                       <Button 
                         onClick={createFolder}
                         disabled={!newFolderName.trim()}
-                        className="bg-purple-600 hover:bg-purple-700"
+                        className="bg-purple-600 hover:bg-purple-700 w-full sm:w-auto"
                       >
                         <FolderPlus className="w-4 h-4 mr-1" />
                         Create Folder
@@ -918,10 +922,10 @@ License information.
 
           {/* Student Selector for Teachers */}
           {isTeacher && students.length > 0 && (
-            <div className="mt-4">
-              <Label htmlFor="studentSelect">Viewing files for:</Label>
+            <div className="mt-3 sm:mt-4">
+              <Label htmlFor="studentSelect" className="text-sm">Viewing files for:</Label>
               <Select value={selectedStudentId} onValueChange={setSelectedStudentId}>
-                <SelectTrigger className="w-full mt-1">
+                <SelectTrigger className="w-full mt-1 h-9">
                   <SelectValue placeholder="Select a student" />
                 </SelectTrigger>
                 <SelectContent>
@@ -936,53 +940,58 @@ License information.
           )}
 
           {/* Navigation */}
-          <div className="flex items-center space-x-2 text-sm text-zinc-600 dark:text-zinc-400">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-zinc-600 dark:text-zinc-400 mt-3 sm:mt-4">
             <Button
               size="sm"
               variant="ghost"
               onClick={navigateUp}
               disabled={currentPath === '/'}
+              className="h-8 w-fit"
             >
               ← Back
             </Button>
-            <span>Path: {currentPath}</span>
+            <span className="text-xs sm:text-sm font-mono bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded truncate">
+              {currentPath}
+            </span>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-3 sm:p-6">
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
             </div>
           ) : (
-            <div className="space-y-1 max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-600 scrollbar-track-transparent hover:scrollbar-thumb-zinc-400 dark:hover:scrollbar-thumb-zinc-500">
+            <div className="space-y-1 max-h-72 sm:max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-600 scrollbar-track-transparent hover:scrollbar-thumb-zinc-400 dark:hover:scrollbar-thumb-zinc-500">
               {files.length === 0 ? (
-                <p className="text-center text-zinc-500 py-8">No files in this directory</p>
+                <p className="text-center text-zinc-500 py-8 text-sm">No files in this directory</p>
               ) : (
                 files.map((file, index) => (
                   <div
                     key={index}
-                    className="flex items-center justify-between p-2 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded"
+                    className="flex items-center justify-between p-2 sm:p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded"
                   >
                     <div
-                      className="flex items-center space-x-2 cursor-pointer flex-1"
+                      className="flex items-center space-x-2 cursor-pointer flex-1 min-w-0"
                       onClick={() => loadFileContent(file)}
                     >
-                      <span className="text-lg">
+                      <span className="text-base sm:text-lg flex-shrink-0">
                         {file.type === 'directory' ? '📁' : '📄'}
                       </span>
-                      <span className="truncate">{file.name}</span>
+                      <span className="truncate text-sm sm:text-base">{file.name}</span>
                       {file.size && (
-                        <span className="text-xs text-zinc-500">
+                        <span className="text-xs text-zinc-500 hidden sm:inline">
                           ({(file.size / 1024).toFixed(1)}KB)
                         </span>
                       )}
                     </div>
-                    <div className="flex space-x-1">
+                    <div className="flex space-x-1 flex-shrink-0">
                       {file.type === 'file' && (
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={() => downloadFile(file)}
+                          className="h-7 w-7 p-0 sm:h-8 sm:w-8"
+                          title="Download file"
                         >
                           <Download className="h-3 w-3" />
                         </Button>
@@ -991,7 +1000,8 @@ License information.
                         size="sm"
                         variant="ghost"
                         onClick={() => deleteFile(file)}
-                        className="text-red-600 hover:text-red-700"
+                        className="text-red-600 hover:text-red-700 h-7 w-7 p-0 sm:h-8 sm:w-8"
+                        title="Delete file"
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>
@@ -1043,9 +1053,9 @@ License information.
         </CardHeader>
         <CardContent>
           {editingFile ? (
-            <div className="border rounded-lg overflow-hidden">
+            <div className="h-64 sm:h-80 lg:h-96 border rounded-b-lg overflow-hidden">
               <Editor
-                height="500px"
+                height="100%"
                 language={editingFile.language}
                 value={editingFile.content}
                 onChange={(value) => {
@@ -1065,14 +1075,16 @@ License information.
                   lineNumbers: 'on',
                   folding: true,
                   autoIndent: 'full',
+                  fontSize: 12,
+                  automaticLayout: true,
                 }}
               />
             </div>
           ) : (
-            <div className="flex items-center justify-center h-96 text-zinc-500">
+            <div className="flex items-center justify-center h-64 sm:h-80 lg:h-96 text-zinc-500">
               <div className="text-center">
-                <FileText className="h-12 w-12 mx-auto mb-4" />
-                <p>Select a file to edit</p>
+                <FileText className="h-8 w-8 sm:h-12 sm:w-12 mx-auto mb-4" />
+                <p className="text-sm sm:text-base">Select a file to edit</p>
               </div>
             </div>
           )}
@@ -1083,26 +1095,26 @@ License information.
       {/* Custom Dialogs */}
     {/* Help Dialog */}
     <Dialog open={showHelpDialog} onOpenChange={setShowHelpDialog}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="mx-4 max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center">
-            <HelpCircle className="w-5 h-5 mr-2 text-purple-600" />
+          <DialogTitle className="flex items-center text-lg">
+            <HelpCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-purple-600" />
             Keyboard Shortcuts & Features
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 text-sm">
           <div>
-            <h4 className="font-semibold mb-2">⌨️ Keyboard Shortcuts:</h4>
-            <div className="space-y-1 text-zinc-600 dark:text-zinc-400">
-              <div>🔸 <kbd className="px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded">Ctrl+N</kbd> - Create new file</div>
-              <div>🔸 <kbd className="px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded">Ctrl+Shift+N</kbd> - Create new folder</div>
-              <div>🔸 <kbd className="px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded">Escape</kbd> - Close modals</div>
-              <div>🔸 <kbd className="px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded">Enter</kbd> - Confirm in dialogs</div>
+            <h4 className="font-semibold mb-2 text-sm sm:text-base">⌨️ Keyboard Shortcuts:</h4>
+            <div className="space-y-1 text-zinc-600 dark:text-zinc-400 text-xs sm:text-sm">
+              <div>🔸 <kbd className="px-1.5 py-0.5 sm:px-2 sm:py-1 bg-zinc-100 dark:bg-zinc-800 rounded text-xs">Ctrl+N</kbd> - Create new file</div>
+              <div>🔸 <kbd className="px-1.5 py-0.5 sm:px-2 sm:py-1 bg-zinc-100 dark:bg-zinc-800 rounded text-xs">Ctrl+Shift+N</kbd> - Create new folder</div>
+              <div>🔸 <kbd className="px-1.5 py-0.5 sm:px-2 sm:py-1 bg-zinc-100 dark:bg-zinc-800 rounded text-xs">Escape</kbd> - Close modals</div>
+              <div>🔸 <kbd className="px-1.5 py-0.5 sm:px-2 sm:py-1 bg-zinc-100 dark:bg-zinc-800 rounded text-xs">Enter</kbd> - Confirm in dialogs</div>
             </div>
           </div>
           <div>
-            <h4 className="font-semibold mb-2">🎯 Language Support:</h4>
-            <div className="space-y-1 text-zinc-600 dark:text-zinc-400">
+            <h4 className="font-semibold mb-2 text-sm sm:text-base">🎯 Language Support:</h4>
+            <div className="space-y-1 text-zinc-600 dark:text-zinc-400 text-xs sm:text-sm">
               <div>🔸 .py files → Python intellisense</div>
               <div>🔸 .js/.jsx files → JavaScript intellisense</div>
               <div>🔸 .ts/.tsx files → TypeScript intellisense</div>
