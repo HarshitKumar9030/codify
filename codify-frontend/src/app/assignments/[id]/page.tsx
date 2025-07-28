@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, CheckCircle, XCircle, AlertCircle, Calendar, Loader2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, Calendar } from 'lucide-react';
 import FileManager from '@/components/FileManager';
 import {
   AssignmentHeader,
