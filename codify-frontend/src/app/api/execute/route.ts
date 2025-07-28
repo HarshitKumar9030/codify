@@ -105,11 +105,13 @@ export async function POST(request: NextRequest) {
       code: string;
       language: string;
       timeout: number;
+      userId: string;
       input?: string;
     } = {
       code,
       language,
       timeout: timeout || 10,
+      userId: session.user.id, // ✅ Include userId from session
     };
 
     // Only include input if it has content

@@ -66,6 +66,8 @@ class FastSecureExecutionService {
    * Fast secure execution without Docker
    */
   async executeCode({ executionId, code, language, input = '', timeout = 10, userId, clientIp }) {
+    console.log(`🔥 executeCode called with userId: ${userId}, executionId: ${executionId}`);
+    
     try {
       // Fast validation
       const validationErrors = this.validateCodeFast(code);
@@ -626,6 +628,8 @@ try {
   }
 
   async setupUserFileAccess(tempDir, userId) {
+    console.log(`🚀🚀🚀 setupUserFileAccess START: userId=${userId}, tempDir=${tempDir}`);
+    
     try {
       console.log(`Setting up file access for user ${userId} in temp dir ${tempDir}`);
       
@@ -635,57 +639,51 @@ try {
       
       // Check if user directory exists
       if (!fs.existsSync(userDir)) {
-        console.log(`User directory does not exist: ${userDir}`);
+        console.log(`❌ User directory does not exist: ${userDir}`);
         return;
       }
       
-      // Get all files in the user directory
-      const userFiles = await readdir(userDir, { withFileTypes: true });
-      console.log(`Found ${userFiles.length} files/folders in user directory:`, userFiles.map(f => f.name));
+      console.log(`✅ User directory exists: ${userDir}`);
+      
+      // Get all files in the user directory - using SYNC operations like working WebSocket version
+      const userFiles = fs.readdirSync(userDir, { withFileTypes: true });
+      console.log(`📁 Found ${userFiles.length} files/folders in user directory:`, userFiles.map(f => f.name));
       
       for (const file of userFiles) {
         const userFilePath = join(userDir, file.name);
         const tempFilePath = join(tempDir, file.name);
         
+        console.log(`📋 Processing: ${file.name}, isDirectory: ${file.isDirectory()}`);
+        
         try {
           if (file.isDirectory()) {
-            // For directories, copy recursively
-            console.log(`Copying directory: ${file.name}`);
-            await this.copyDirectoryRecursive(userFilePath, tempFilePath);
+            // For directories, copy recursively using sync operations
+            console.log(`📂 Copying directory: ${file.name} from ${userFilePath} to ${tempFilePath}`);
+            fs.cpSync(userFilePath, tempFilePath, { recursive: true });
+            console.log(`✅ Directory copied successfully: ${file.name}`);
           } else {
-            // For files, copy to temp directory
-            console.log(`Copying file: ${file.name}`);
-            await copyFile(userFilePath, tempFilePath);
+            // For files, copy to temp directory using sync operations
+            console.log(`📄 Copying file: ${file.name} from ${userFilePath} to ${tempFilePath}`);
+            fs.copyFileSync(userFilePath, tempFilePath);
+            console.log(`✅ File copied successfully: ${file.name}`);
           }
-        } catch (error) {
-          console.error(`Error setting up file access for ${file.name}:`, error);
+        } catch (fileError) {
+          console.error(`❌ Error copying ${file.name}:`, fileError);
+          throw fileError; // Re-throw to see in main catch
         }
       }
       
-      console.log(`Successfully set up file access for user ${userId} in ${tempDir}`);
+      console.log(`🎉 Successfully set up file access for user ${userId} in ${tempDir}`);
       
-      // List what's now available in temp dir
-      const tempFiles = await readdir(tempDir);
-      console.log(`Files now available in temp directory:`, tempFiles);
+      // List what's now available in temp dir - using sync operations
+      const tempFiles = fs.readdirSync(tempDir);
+      console.log(`📋 Files now available in temp directory:`, tempFiles);
+      
+      console.log(`🚀🚀🚀 setupUserFileAccess COMPLETE: userId=${userId}`);
       
     } catch (error) {
-      console.error('Error setting up user file access:', error);
-    }
-  }
-
-  async copyDirectoryRecursive(src, dest) {
-    await mkdir(dest, { recursive: true });
-    const files = await readdir(src, { withFileTypes: true });
-    
-    for (const file of files) {
-      const srcPath = join(src, file.name);
-      const destPath = join(dest, file.name);
-      
-      if (file.isDirectory()) {
-        await this.copyDirectoryRecursive(srcPath, destPath);
-      } else {
-        await copyFile(srcPath, destPath);
-      }
+      console.error('💥💥💥 CRITICAL ERROR in setupUserFileAccess:', error);
+      throw error; // Re-throw to see if this is causing silent failures
     }
   }
 }

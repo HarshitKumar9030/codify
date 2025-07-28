@@ -12,6 +12,7 @@ const executeCodeSchema = Joi.object({
   language: Joi.string().valid('python', 'javascript').required(),
   input: Joi.string().allow('').optional().max(2000), // 2KB for faster processing
   timeout: Joi.number().integer().min(1).max(15).default(10), // Max 15 seconds for speed
+  userId: Joi.string().optional(), // Add userId support
 }).unknown(false); // Strict: reject unknown fields
 
 const getResultSchema = Joi.object({
@@ -26,8 +27,9 @@ const getResultSchema = Joi.object({
 
 router.post('/', validateRequest(executeCodeSchema), async (req, res) => {
   try {
-    const { code, language, input, timeout } = req.body;
+    const { code, language, input, timeout, userId } = req.body;
     const executionId = uuidv4();
+    
     
     // Log execution attempt with request details
     console.log(`Execution request ${executionId}: ${language}`, {
@@ -35,6 +37,7 @@ router.post('/', validateRequest(executeCodeSchema), async (req, res) => {
       hasInput: !!input,
       inputLength: input ? input.length : 0,
       timeout,
+      userId: userId || 'anonymous',
       requestBody: Object.keys(req.body)
     });
     
@@ -45,6 +48,7 @@ router.post('/', validateRequest(executeCodeSchema), async (req, res) => {
       language,
       input,
       timeout,
+      userId,
       clientIp: req.ip,
     });
 

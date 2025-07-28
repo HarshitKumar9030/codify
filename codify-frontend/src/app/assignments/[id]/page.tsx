@@ -75,7 +75,7 @@ interface Submission {
 export default function AssignmentPage() {
   const params = useParams();
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const assignmentId = params.id as string;
 
   const [assignment, setAssignment] = useState<Assignment | null>(null);
@@ -164,10 +164,10 @@ export default function AssignmentPage() {
       }
     };
 
-    if (session?.user?.email) {
+    if (session?.user?.email && sessionStatus === 'authenticated') {
       fetchData();
     }
-  }, [assignmentId, session?.user?.email]);
+  }, [assignmentId, session?.user?.email, sessionStatus]);
 
   // Check due date when assignment data is available
   useEffect(() => {
@@ -1082,18 +1082,28 @@ export default function AssignmentPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <InteractiveExecutionPanel
-                  code={code}
-                  language={assignment.language}
-                  onCodeChange={(newCode) => setCode(newCode)}
-                  userId={session?.user?.id}
-                  isAssignmentPage={true}
-                  className="h-[700px]"
-                />
+                {sessionStatus === 'authenticated' && session?.user?.id ? (
+                  <InteractiveExecutionPanel
+                    code={code}
+                    language={assignment.language}
+                    onCodeChange={(newCode) => setCode(newCode)}
+                    userId={session.user.id}
+                    isAssignmentPage={true}
+                    className="h-[700px]"
+                  />
+                ) : (
+                  <div className="h-[700px] flex items-center justify-center bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+                      <p className="text-gray-600 dark:text-gray-400">Loading user session...</p>
+                    </div>
+                  </div>
+                )}
                 {/* Debug: Check session state */}
                 {process.env.NODE_ENV === 'development' && (
-                  <div className="mt-2 p-2 bg-gray-100 text-xs">
+                  <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-800 text-xs">
                     Debug - Session: {session ? 'loaded' : 'not loaded'}, 
+                    Status: {sessionStatus},
                     UserId: {session?.user?.id || 'undefined'}
                   </div>
                 )}
@@ -1103,16 +1113,25 @@ export default function AssignmentPage() {
             </TabsContent>
 
             <TabsContent value="files">
-              <FileManager
-                onFileSelect={(path, content) => {
-                  setCode(content);
-                }}
-                className="h-96"
-                userId={session?.user?.id}
-                classroomId={assignment?.classroom?.id}
-                isTeacher={isTeacher}
-                targetUserId={isTeacher ? undefined : session?.user?.id} // For teachers, allow viewing any student files
-              />
+              {sessionStatus === 'authenticated' && session?.user?.id ? (
+                <FileManager
+                  onFileSelect={(path, content) => {
+                    setCode(content);
+                  }}
+                  className="h-96"
+                  userId={session.user.id}
+                  classroomId={assignment?.classroom?.id}
+                  isTeacher={isTeacher}
+                  targetUserId={isTeacher ? undefined : session.user.id} // For teachers, allow viewing any student files
+                />
+              ) : (
+                <div className="h-96 flex items-center justify-center bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600 dark:text-gray-400">Loading user session...</p>
+                  </div>
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         )}

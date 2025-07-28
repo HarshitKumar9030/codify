@@ -1,8 +1,11 @@
 "use client";
 
+import { useSession } from "next-auth/react";
 import InteractiveExecutionPanel from "@/components/InteractiveExecutionPanel";
 
 export default function CodeEditorTab() {
+  const { data: session } = useSession();
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
@@ -14,7 +17,7 @@ export default function CodeEditorTab() {
         </p>
       </div>
 
-      <InteractiveExecutionPanel />
+      <InteractiveExecutionPanel userId={session?.user?.id} />
     </div>
   );
 }
