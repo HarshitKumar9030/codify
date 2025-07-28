@@ -6,7 +6,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import AssignmentCreationForm from "@/components/AssignmentCreationForm";
 import { 
   Code,
   LogOut,
@@ -446,27 +446,14 @@ export default function Dashboard() {
         </Tabs>
       </main>
 
-      {/* Placeholder Assignment Creation Dialog */}
+      {/* Assignment Creation Dialog */}
       {createAssignmentOpen && (
-        <Dialog open={createAssignmentOpen} onOpenChange={setCreateAssignmentOpen}>
-          <DialogContent className="sm:max-w-md bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">
-                Create Assignment
-              </DialogTitle>
-            </DialogHeader>
-            <div className="p-6 text-center text-zinc-500 dark:text-zinc-400">
-              <p className="text-sm">Assignment creation form will be implemented here.</p>
-              <p className="text-xs mt-2 text-zinc-400">For now, this is a placeholder.</p>
-              <Button 
-                onClick={() => setCreateAssignmentOpen(false)}
-                className="mt-4 bg-purple-600 hover:bg-purple-700"
-              >
-                Close
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <AssignmentCreationForm
+          open={createAssignmentOpen}
+          onOpenChange={setCreateAssignmentOpen}
+          classrooms={classrooms}
+          onAssignmentCreated={fetchAssignments}
+        />
       )}
     </div>
   );
