@@ -1090,6 +1090,13 @@ export default function AssignmentPage() {
                   isAssignmentPage={true}
                   className="h-[700px]"
                 />
+                {/* Debug: Check session state */}
+                {process.env.NODE_ENV === 'development' && (
+                  <div className="mt-2 p-2 bg-gray-100 text-xs">
+                    Debug - Session: {session ? 'loaded' : 'not loaded'}, 
+                    UserId: {session?.user?.id || 'undefined'}
+                  </div>
+                )}
               </CardContent>
             </Card>
               </div>

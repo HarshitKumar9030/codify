@@ -82,7 +82,7 @@ class WebSocketExecutionServer {
         let childProcess;
         
         if (language === 'python') {
-          childProcess = await this.createPersistentPython(ws, tempDir, executionId);
+          childProcess = await this.createPersistentPython(ws, tempDir, executionId, userId);
         } else if (language === 'javascript') {
           childProcess = await this.createPersistentJavaScript(ws, tempDir, executionId);
         }
@@ -138,10 +138,20 @@ class WebSocketExecutionServer {
     return pythonProcess;
   }
 
-  async createPersistentPython(ws, tempDir, executionId) {
+  async createPersistentPython(ws, tempDir, executionId, userId) {
+    console.log(`Creating persistent Python process with userId: ${userId}`);
+    
     const executorScript = this.createPersistentPythonExecutor();
     const executorFile = path.join(tempDir, 'persistent_executor.py');
     fs.writeFileSync(executorFile, executorScript);
+    
+    // Create access to user files if userId is provided
+    if (userId) {
+      console.log(`Setting up user file access for userId: ${userId}`);
+      await this.setupUserFileAccess(tempDir, userId);
+    } else {
+      console.log('No userId provided, skipping file access setup');
+    }
     
     // Start persistent Python process
     const pythonProcess = spawn('python', [executorFile], {
@@ -368,6 +378,55 @@ class WebSocketExecutionServer {
       }
       
       this.activeExecutions.delete(ws);
+    }
+  }
+
+  async setupUserFileAccess(tempDir, userId) {
+    try {
+      console.log(`Setting up file access for user ${userId} in temp dir ${tempDir}`);
+      
+      // Get the user's file directory
+      const userDir = path.join(process.cwd(), 'user-files', `user_${userId}`);
+      console.log(`Looking for user directory: ${userDir}`);
+      
+      // Check if user directory exists
+      if (!fs.existsSync(userDir)) {
+        console.log(`User directory does not exist: ${userDir}`);
+        return;
+      }
+      
+      // Get all files in the user directory
+      const userFiles = fs.readdirSync(userDir, { withFileTypes: true });
+      console.log(`Found ${userFiles.length} files/folders in user directory:`, userFiles.map(f => f.name));
+      
+      for (const file of userFiles) {
+        const userFilePath = path.join(userDir, file.name);
+        const tempFilePath = path.join(tempDir, file.name);
+        
+        try {
+          if (file.isDirectory()) {
+            // For directories, create a symbolic link or copy recursively
+            console.log(`Copying directory: ${file.name}`);
+            fs.cpSync(userFilePath, tempFilePath, { recursive: true });
+          } else {
+            // For files, create a symbolic link or copy
+            // Use copy instead of symlink for better Windows compatibility
+            console.log(`Copying file: ${file.name}`);
+            fs.copyFileSync(userFilePath, tempFilePath);
+          }
+        } catch (error) {
+          console.error(`Error setting up file access for ${file.name}:`, error);
+        }
+      }
+      
+      console.log(`Successfully set up file access for user ${userId} in ${tempDir}`);
+      
+      // List what's now available in temp dir
+      const tempFiles = fs.readdirSync(tempDir);
+      console.log(`Files now available in temp directory:`, tempFiles);
+      
+    } catch (error) {
+      console.error('Error setting up user file access:', error);
     }
   }
 

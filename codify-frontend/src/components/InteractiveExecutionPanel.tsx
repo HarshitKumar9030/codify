@@ -60,7 +60,7 @@ console.log("Ready to start coding!");`));
     stopExecution: wsStopExecution,
     clearOutput: wsClearOutput,
     ping
-  } = useWebSocketExecution();
+  } = useWebSocketExecution(userId);
 
   // Mount detection to prevent hydration mismatches
   useEffect(() => {
@@ -86,17 +86,19 @@ console.log("Ready to start coding!");`));
     if (!code.trim()) return;
 
     setIsExecuting(true);
-    setOutput('🚀 Executing code...\n\n');
+    setOutput('Executing code...\n\n');
     onExecute?.(false);
 
     try {
+      console.log('Sending HTTP request with userId:', userId); // Debug log
       const response = await fetch('/api/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           code,
           language,
-          userId
+          userId,
+          timeout: 10
         })
       });
 
@@ -105,13 +107,13 @@ console.log("Ready to start coding!");`));
       if (data.success) {
         setOutput(prev => prev + (data.output || ''));
         if (data.error) {
-          setOutput(prev => prev + '\n❌ Error:\n' + data.error);
+          setOutput(prev => prev + '\nError:\n' + data.error);
         }
       } else {
-        setOutput(prev => prev + '\n❌ Error: ' + (data.error || 'Execution failed'));
+        setOutput(prev => prev + '\nError: ' + (data.error || 'Execution failed'));
       }
     } catch (error) {
-      setOutput(prev => prev + '\n❌ Network Error: ' + (error as Error).message);
+      setOutput(prev => prev + '\nNetwork Error: ' + (error as Error).message);
     } finally {
       setIsExecuting(false);
     }

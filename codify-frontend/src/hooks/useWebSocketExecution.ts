@@ -5,7 +5,7 @@ import WebSocketManager, { type WebSocketMessage } from '../utils/WebSocketManag
 const WS_SERVER_URL = process.env.REACT_APP_WS_SERVER_URL || process.env.NEXT_PUBLIC_WS_SERVER_URL || 'ws://localhost:8080';
 const HTTP_SERVER_URL = (process.env.REACT_APP_WS_SERVER_URL || process.env.NEXT_PUBLIC_WS_SERVER_URL || 'ws://localhost:8080').replace('ws://', 'http://').replace('wss://', 'https://');
 
-export function useWebSocketExecution() {
+export function useWebSocketExecution(userId: string | undefined) {
   const [isConnected, setIsConnected] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
   const [output, setOutput] = useState<string[]>([]);
@@ -178,14 +178,17 @@ export function useWebSocketExecution() {
       return;
     }
 
+    console.log('WebSocket executeCode called with userId:', userId); // Debug log
+
     manager.send({
       type: 'execute',
       payload: {
         code: code,
-        language: language
+        language: language,
+        userId: userId // Include userId in the payload
       }
     });
-  }, []);
+  }, [userId]); // Add userId to dependency array
 
   // Stop execution
   const stopExecution = useCallback(() => {

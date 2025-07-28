@@ -1,18 +1,18 @@
 import express from 'express';
 import Joi from 'joi';
 import { v4 as uuidv4 } from 'uuid';
-import CodeExecutionService from '../services/codeExecutionService.js';
+import FastSecureExecutionService from '../services/fastSecureExecutionService.js';
 import { validateRequest } from '../middleware/validation.js';
 
 const router = express.Router();
-const executionService = new CodeExecutionService();
+const executionService = new FastSecureExecutionService();
 
 const executeCodeSchema = Joi.object({
-  code: Joi.string().required().max(50000), // 50KB limit
+  code: Joi.string().required().max(25000), // 25KB limit for fast validation
   language: Joi.string().valid('python', 'javascript').required(),
-  input: Joi.string().allow('').optional().max(10000), // 10KB limit for input, allow empty string
-  timeout: Joi.number().integer().min(1).max(30).default(10), // 1-30 seconds
-}).unknown(false); // Don't allow unknown fields
+  input: Joi.string().allow('').optional().max(2000), // 2KB for faster processing
+  timeout: Joi.number().integer().min(1).max(15).default(10), // Max 15 seconds for speed
+}).unknown(false); // Strict: reject unknown fields
 
 const getResultSchema = Joi.object({
   executionId: Joi.string().uuid().required(),

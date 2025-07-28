@@ -67,19 +67,18 @@ router.get('/detailed', async (req, res) => {
       version: `Node.js ${process.version}`
     };
 
-    // Check Docker availability (if using Docker for sandboxing)
-    try {
-      const { stdout: dockerVersion } = await execAsync('docker --version');
-      health.system.docker = {
+    // Execution service status
+    health.services = {
+      execution: {
         available: true,
-        version: dockerVersion.trim()
-      };
-    } catch (error) {
-      health.system.docker = {
-        available: false,
-        error: 'Docker not found'
-      };
-    }
+        mode: 'fast-secure',
+        docker: false
+      },
+      cleanup: {
+        available: true,
+        running: true
+      }
+    };
 
     res.json(health);
   } catch (error) {
