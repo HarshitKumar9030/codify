@@ -524,6 +524,15 @@ export default function AssignmentPage() {
                   onFileSelect={(path, content) => {
                     setCode(content);
                   }}
+                  onFileLoad={(content, fileName) => {
+                    setCode(content);
+                    showNotification(
+                      'success',
+                      'File Loaded',
+                      `"${fileName}" has been loaded into the editor.`,
+                      <CheckCircle className="h-5 w-5" />
+                    );
+                  }}
                   className="h-96"
                   userId={session.user.id}
                   classroomId={assignment?.classroom?.id}

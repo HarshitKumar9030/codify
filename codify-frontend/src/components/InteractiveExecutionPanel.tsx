@@ -1,11 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Square, Terminal, Keyboard } from 'lucide-react';
 import { useWebSocketExecution } from '@/hooks/useWebSocketExecution';
+import WebSocketManager from '@/utils/WebSocketManager';
 import Editor from "@monaco-editor/react";
 import { useTheme } from "next-themes";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+
+// Get WebSocket server URL from environment variable or fallback to localhost
+const WS_SERVER_URL = process.env.REACT_APP_WS_SERVER_URL || process.env.NEXT_PUBLIC_WS_SERVER_URL || 'ws://localhost:8080';
 
 interface InteractiveExecutionPanelProps {
   code?: string;
@@ -128,9 +132,27 @@ console.log("Ready to start coding!");`));
   };
 
   const handleExecute = () => {
-    if (useWebSocket && isConnected) {
-      handleWebSocketExecution();
+    console.log('🚀 Execute triggered:', { useWebSocket, isConnected, code: code.slice(0, 50) + '...' });
+    
+    // Force WebSocket execution and try to connect if not connected
+    if (useWebSocket) {
+      if (isConnected) {
+        console.log('✅ Using WebSocket execution (connected)');
+        handleWebSocketExecution();
+      } else {
+        console.log('🔄 WebSocket not connected, attempting connection...');
+        // Try to reconnect and then execute
+        const wsManager = WebSocketManager.getInstance();
+        wsManager.connect(WS_SERVER_URL).then(() => {
+          console.log('✅ WebSocket connected, executing...');
+          handleWebSocketExecution();
+        }).catch((error: Error) => {
+          console.error('❌ WebSocket connection failed, falling back to HTTP:', error);
+          handleTraditionalExecution();
+        });
+      }
     } else {
+      console.log('📡 Using HTTP execution (WebSocket disabled)');
       handleTraditionalExecution();
     }
   };

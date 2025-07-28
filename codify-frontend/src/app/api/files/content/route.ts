@@ -71,3 +71,76 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+// POST /api/files/content - Save file content
+export async function POST(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
+    const { path, content, userId, requestingUserId, classroomId, isTeacher } = await request.json();
+
+    if (!path) {
+      return NextResponse.json(
+        { error: "Path parameter is required" },
+        { status: 400 }
+      );
+    }
+
+    if (content === undefined || content === null) {
+      return NextResponse.json(
+        { error: "Content parameter is required" },
+        { status: 400 }
+      );
+    }
+
+    // Use provided userId or session user ID
+    const effectiveUserId = userId || session.user.id;
+
+    const requestBody = {
+      userId: effectiveUserId,
+      path: path,
+      content: content,
+      action: 'update', // Use update action for saving content
+      requestingUserId: requestingUserId || session.user.id,
+      classroomId,
+      isTeacher
+    };
+
+    const response = await fetch(`${EXECUTION_SERVER_URL}/api/files`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'CodiFY-Frontend/1.0',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return NextResponse.json(
+        { 
+          error: "File server error",
+          message: errorData.message || "Failed to save file content"
+        },
+        { status: response.status }
+      );
+    }
+
+    const result = await response.json();
+    return NextResponse.json(result);
+
+  } catch (error) {
+    console.error("Save file content error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
