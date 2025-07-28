@@ -281,7 +281,7 @@ console.log("Doubled numbers:", doubled);
         }
       }
 
-      await fs.writeFile(fullPath, content, 'utf8');
+      await fs.writeFile(fullPath, content, Buffer.isBuffer(content) ? null : 'utf8');
 
       return {
         success: true,
@@ -420,6 +420,12 @@ console.log("Doubled numbers:", doubled);
         error: error.message
       };
     }
+  }
+
+  getFullPath(userId, filePath) {
+    const userDir = path.join(this.baseDir, 'user-files', `user_${userId}`);
+    const safePath = this.validatePath(filePath);
+    return path.join(userDir, safePath);
   }
 }
 

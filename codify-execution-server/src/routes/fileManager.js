@@ -1,9 +1,125 @@
 import express from 'express';
+import multer from 'multer';
 import FileManagerService from '../services/fileManagerService.js';
 import path from 'path';
+import fs from 'fs/promises';
 
 const router = express.Router();
 const fileManager = new FileManagerService();
+
+// Configure multer for file uploads
+const storage = multer.memoryStorage();
+const upload = multer({ 
+  storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Allow all file types for now, validation happens in route
+    cb(null, true);
+  }
+});
+
+// Helper function to get MIME type
+function getMimeType(filename) {
+  const ext = path.extname(filename).toLowerCase();
+  const mimeTypes = {
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.gif': 'image/gif',
+    '.webp': 'image/webp',
+    '.pdf': 'application/pdf',
+    '.txt': 'text/plain',
+    '.js': 'application/javascript',
+    '.py': 'text/x-python',
+    '.json': 'application/json',
+    '.zip': 'application/zip'
+  };
+  return mimeTypes[ext] || 'application/octet-stream';
+}
+
+// POST /upload - Upload a file
+router.post('/upload', upload.single('file'), async (req, res) => {
+  try {
+    const { userId, requestingUserId, path: filePath } = req.body;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({
+        success: false,
+        error: 'No file provided'
+      });
+    }
+
+    if (!userId || !requestingUserId || !filePath) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required parameters: userId, requestingUserId, path'
+      });
+    }
+
+    // Validate user access
+    await fileManager.validateUserAccess(requestingUserId, userId, false);
+
+    // Create the file
+    await fileManager.createFile(userId, filePath, file.buffer);
+
+    res.json({
+      success: true,
+      message: 'File uploaded successfully',
+      path: filePath,
+      size: file.size,
+      mimeType: file.mimetype
+    });
+  } catch (error) {
+    console.error('Upload error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to upload file'
+    });
+  }
+});
+
+// GET /download - Download a file
+router.get('/download', async (req, res) => {
+  try {
+    const { userId, path: filePath } = req.query;
+
+    if (!userId || !filePath) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required parameters: userId, path'
+      });
+    }
+
+    // Get file content and metadata
+    const content = await fileManager.readFile(userId, filePath);
+    const fullPath = fileManager.getFullPath(userId, filePath);
+    const stat = await fs.stat(fullPath);
+
+    // Set appropriate headers
+    const filename = path.basename(filePath);
+    const mimeType = getMimeType(filename);
+    
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+    res.setHeader('Content-Length', stat.size);
+
+    // Send file content
+    if (typeof content === 'string') {
+      res.send(content);
+    } else {
+      res.send(content);
+    }
+  } catch (error) {
+    console.error('Download error:', error);
+    res.status(404).json({
+      success: false,
+      error: 'File not found'
+    });
+  }
+});
 
 // GET /api/files - List files in user directory
 router.get('/', async (req, res) => {

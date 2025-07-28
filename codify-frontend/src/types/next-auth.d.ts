@@ -7,6 +7,7 @@ declare module 'next-auth' {
       email: string
       name?: string | null
       role: 'STUDENT' | 'TEACHER' | 'ADMIN'
+      onboardingCompleted?: boolean
     }
   }
 
@@ -15,11 +16,13 @@ declare module 'next-auth' {
     email: string
     name?: string | null
     role: 'STUDENT' | 'TEACHER' | 'ADMIN'
+    onboardingCompleted?: boolean
   }
 }
 
 declare module 'next-auth/jwt' {
   interface JWT {
     role: 'STUDENT' | 'TEACHER' | 'ADMIN'
+    onboardingCompleted?: boolean
   }
 }

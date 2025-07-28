@@ -65,10 +65,10 @@ export default function Navigation() {
               Docs
             </Link>
             <Link 
-              href="/pricing" 
+              href="/contact" 
               className="px-3 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50 rounded-md transition-all duration-200"
             >
-              Pricing
+              Contact
             </Link>
           </div>
 
@@ -188,11 +188,11 @@ export default function Navigation() {
                 Docs
               </Link>
               <Link 
-                href="/pricing" 
+                href="/contact" 
                 className="block px-3 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50 rounded-md transition-all"
                 onClick={() => setIsMenuOpen(false)}
               >
-                Pricing
+                Contact
               </Link>
               
               {/* Theme Toggle in Mobile */}

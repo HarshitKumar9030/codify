@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { writeFile } from "fs/promises";
-import path from "path";
 
-// POST /api/chat/upload - Upload file for chat
+// POST /api/chat/upload - Upload file for chat using execution server
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -60,31 +58,42 @@ export async function POST(request: NextRequest) {
 
     // Create unique filename
     const timestamp = Date.now();
-    const filename = `${session.user.id}_${timestamp}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    const filename = `chat_${session.user.id}_${timestamp}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
     
-    // Create upload directory if it doesn't exist
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'chat', classroomId);
-    const filePath = path.join(uploadDir, filename);
+    // Create FormData for execution server
+    const serverFormData = new FormData();
+    serverFormData.append('file', file);
+    serverFormData.append('userId', session.user.id);
+    serverFormData.append('requestingUserId', session.user.id);
+    serverFormData.append('path', `/chat/${classroomId}/${filename}`);
+    
+    // Upload to execution server
+    const executionServerUrl = process.env.EXECUTION_SERVER_URL || 'http://localhost:8080';
+    const uploadResponse = await fetch(`${executionServerUrl}/api/files/upload`, {
+      method: 'POST',
+      body: serverFormData
+    });
 
-    // Create directory structure
-    await import('fs').then(fs => 
-      fs.promises.mkdir(uploadDir, { recursive: true })
-    );
+    if (!uploadResponse.ok) {
+      throw new Error('Failed to upload to execution server');
+    }
 
-    // Save file
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    await writeFile(filePath, buffer);
+    const uploadResult = await uploadResponse.json();
+    
+    if (!uploadResult.success) {
+      throw new Error(uploadResult.error || 'Upload failed');
+    }
 
-    // Return file information
-    const fileUrl = `/uploads/chat/${classroomId}/${filename}`;
+    // Return file information with execution server URL
+    const fileUrl = `${executionServerUrl}/api/files/download?userId=${session.user.id}&path=/chat/${classroomId}/${filename}`;
     
     return NextResponse.json({
       success: true,
       fileUrl,
       fileName: file.name,
       fileSize: file.size,
-      fileType: file.type
+      fileType: file.type,
+      serverPath: `/chat/${classroomId}/${filename}`
     });
 
   } catch (error) {

@@ -1,80 +1,97 @@
-import { Shield, Code, Users, Zap, BarChart3, FileCode } from "lucide-react";
+import { Shield, Code, Users, Zap, BarChart3, FileCode, Trophy, MessageSquare } from "lucide-react";
 
 const features = [
   {
     icon: Users,
-    title: "Classroom Management",
-    description: "Create unique classroom codes, monitor student progress, and manage assignments with ease.",
+    title: "Smart Classroom Management",
+    description: "Create and manage virtual classrooms with unique codes, track enrollments, and organize students effortlessly.",
     color: "from-purple-500 to-purple-600"
   },
   {
     icon: Code,
     title: "Live Code Execution",
-    description: "Run Python and JavaScript code in a secure sandbox environment with instant feedback.",
+    description: "Execute Python and JavaScript code instantly in secure sandboxed environments with real-time output.",
     color: "from-blue-500 to-blue-600"
   },
   {
     icon: Shield,
-    title: "Secure Environment",
-    description: "Advanced security measures ensure safe code execution and protect against malicious code.",
+    title: "Enterprise Security",
+    description: "Bank-level security with isolated execution environments, user permissions, and data protection.",
     color: "from-green-500 to-green-600"
   },
   {
     icon: Zap,
-    title: "Real-time Feedback",
-    description: "Get instant feedback on code submissions with detailed error messages and suggestions.",
+    title: "Instant Feedback",
+    description: "Real-time code analysis, syntax highlighting, and intelligent error detection with helpful suggestions.",
     color: "from-orange-500 to-orange-600"
   },
   {
-    icon: BarChart3,
-    title: "Progress Tracking",
-    description: "Track student progress with detailed analytics and performance metrics for both languages.",
+    icon: Trophy,
+    title: "Gamified Learning",
+    description: "Leaderboards, achievement tracking, and progress visualization to motivate student engagement.",
     color: "from-pink-500 to-pink-600"
   },
   {
     icon: FileCode,
-    title: "Python & JavaScript",
-    description: "Full support for Python 3.x and modern JavaScript (ES6+) with popular libraries and frameworks.",
+    title: "Advanced File System",
+    description: "Comprehensive file management with upload, download, sharing, and version control capabilities.",
     color: "from-indigo-500 to-indigo-600"
+  },
+  {
+    icon: BarChart3,
+    title: "Detailed Analytics",
+    description: "Comprehensive insights into student performance, assignment completion rates, and learning patterns.",
+    color: "from-red-500 to-red-600"
+  },
+  {
+    icon: MessageSquare,
+    title: "Communication Hub",
+    description: "Built-in messaging system, notifications, and real-time updates for seamless teacher-student interaction.",
+    color: "from-teal-500 to-teal-600"
   }
 ];
 
 export default function FeaturesSection() {
   return (
-    <section className="py-24 px-4 sm:px-6 lg:px-8 bg-white dark:bg-zinc-950">
+    <section className="py-24 px-4 sm:px-6 lg:px-8 bg-zinc-50/50 dark:bg-zinc-900/50">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-20">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-zinc-900 dark:text-white mb-4">
-            Everything You Need
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-zinc-900 dark:text-white mb-6">
+            Powerful Features for Modern Education
           </h2>
-          <p className="max-w-2xl mx-auto text-lg text-zinc-600 dark:text-zinc-400">
-            Powerful features designed for modern coding education
+          <p className="max-w-3xl mx-auto text-lg text-zinc-600 dark:text-zinc-400">
+            Everything you need to create engaging coding education experiences. From secure code execution to comprehensive analytics, Codify provides the complete toolkit for modern programming education.
           </p>
         </div>
 
         {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {features.map((feature, index) => (
             <div
               key={index}
-              className="group relative p-8 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:hover:shadow-zinc-900/50"
+              className="group relative p-8 bg-white dark:bg-zinc-800 rounded-2xl border border-zinc-200/50 dark:border-zinc-700/50 hover:border-zinc-300 dark:hover:border-zinc-600 transition-all duration-300 hover:shadow-xl hover:shadow-zinc-200/50 dark:hover:shadow-zinc-900/50"
             >
-              {/* Icon */}
-              <div className={`inline-flex p-3 rounded-xl bg-gradient-to-r ${feature.color} mb-6 shadow-sm`}>
-                <feature.icon className="w-6 h-6 text-white" />
-              </div>
-
+              {/* Gradient background on hover */}
+              <div className="absolute inset-0 bg-gradient-to-br from-zinc-50 to-zinc-100 dark:from-zinc-800 dark:to-zinc-900 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              
               {/* Content */}
-              <h3 className="text-xl font-semibold text-zinc-900 dark:text-white mb-3">
-                {feature.title}
-              </h3>
-              <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                {feature.description}
-              </p>
+              <div className="relative z-10">
+                {/* Icon */}
+                <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-r ${feature.color} mb-6 shadow-lg`}>
+                  <feature.icon className="w-6 h-6 text-white" />
+                </div>
 
-              {/* Hover Effect */}
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-purple-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                {/* Title */}
+                <h3 className="text-xl font-semibold text-zinc-900 dark:text-white mb-3">
+                  {feature.title}
+                </h3>
+                
+                {/* Description */}
+                <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                  {feature.description}
+                </p>
+              </div>
             </div>
           ))}
         </div>

@@ -237,6 +237,20 @@ export default function Dashboard() {
       router.push("/login");
       return;
     }
+    
+    // Check if onboarding is completed - be explicit about the check
+    console.log('Dashboard: Checking onboarding status:', {
+      user: session.user,
+      onboardingCompleted: session.user?.onboardingCompleted
+    });
+    
+    if (session.user && session.user.onboardingCompleted !== true) {
+      console.log('Dashboard: Redirecting to onboarding');
+      router.push("/onboarding");
+      return;
+    }
+    
+    console.log('Dashboard: Onboarding completed, loading dashboard data');
     fetchClassrooms();
     fetchAssignments();
     fetchNotifications();

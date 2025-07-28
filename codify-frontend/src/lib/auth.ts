@@ -43,6 +43,7 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           name: user.name,
           role: user.role,
+          onboardingCompleted: user.onboardingCompleted,
         }
       },
     }),
@@ -51,13 +52,47 @@ export const authOptions: NextAuthOptions = {
     strategy: 'jwt',
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
+      // If this is the initial sign in, use the user data
       if (user) {
         return {
           ...token,
           role: user.role,
+          onboardingCompleted: user.onboardingCompleted || false,
         }
       }
+      
+      // If token is being updated (e.g., after onboarding), refresh user data
+      if (trigger === 'update') {
+        try {
+          const updatedUser = await prisma.user.findUnique({
+            where: { id: token.sub },
+            select: {
+              id: true,
+              email: true,
+              name: true,
+              role: true,
+              onboardingCompleted: true,
+            }
+          });
+          
+          if (updatedUser) {
+            return {
+              ...token,
+              role: updatedUser.role,
+              onboardingCompleted: updatedUser.onboardingCompleted || false,
+            }
+          }
+        } catch (error) {
+          console.error('Error refreshing user data in JWT callback:', error);
+        }
+      }
+      
+      // Ensure onboardingCompleted is always a boolean
+      if (token.onboardingCompleted === undefined || token.onboardingCompleted === null) {
+        token.onboardingCompleted = false;
+      }
+      
       return token
     },
     async session({ session, token }) {
@@ -67,6 +102,7 @@ export const authOptions: NextAuthOptions = {
           ...session.user,
           id: token.sub!,
           role: token.role,
+          onboardingCompleted: token.onboardingCompleted || false,
         },
       }
     },
