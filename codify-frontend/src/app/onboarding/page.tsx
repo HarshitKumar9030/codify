@@ -26,7 +26,6 @@ export default function OnboardingPage() {
     goals: ""
   });
 
-  // Redirect if onboarding is already completed
   useEffect(() => {
     if (status === "loading") return;
     if (!session) {
@@ -46,7 +45,6 @@ export default function OnboardingPage() {
     }
   }, [session, status]);
 
-  // Show loading if session is loading or if redirecting
   if (status === "loading" || !session || session.user?.onboardingCompleted === true) {
     return (
       <div className="min-h-screen bg-white dark:bg-zinc-950 flex items-center justify-center">
@@ -153,7 +151,6 @@ export default function OnboardingPage() {
     <div className="min-h-screen bg-white dark:bg-zinc-950 flex items-center justify-center p-4">
       <div className="max-w-2xl w-full">
         
-        {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-2">
             Welcome to CodiFY, {session?.user?.name}! 👋
@@ -163,7 +160,6 @@ export default function OnboardingPage() {
           </p>
         </div>
 
-        {/* Progress Bar */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -181,10 +177,8 @@ export default function OnboardingPage() {
           </div>
         </div>
 
-        {/* Card */}
         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-8">
           
-          {/* Step 1: Personal Info */}
           {step === 1 && (
             <div className="space-y-6">
               <div className="flex items-center gap-3 mb-6">
@@ -204,7 +198,7 @@ export default function OnboardingPage() {
                   value={data.bio}
                   onChange={(e) => setData(prev => ({ ...prev, bio: e.target.value }))}
                   placeholder="Tell us a bit about yourself, your interests, and what you hope to achieve..."
-                  className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors outline-none"
+                  className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:outline-none focus:ring-purple-500 focus:border-purple-500 transition-colors outline-none"
                   rows={4}
                 />
               </div>
@@ -232,7 +226,7 @@ export default function OnboardingPage() {
                   value={data.school}
                   onChange={(e) => setData(prev => ({ ...prev, school: e.target.value }))}
                   placeholder="Enter your school or institution name"
-                  className="w-full px-4 py-3 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors outline-none"
+                  className="w-full px-4 py-3 rounded-lg border focus:outline-none border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors outline-none"
                 />
               </div>
               

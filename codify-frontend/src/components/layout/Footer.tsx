@@ -1,93 +1,75 @@
 import Link from "next/link";
-import { Code, Github, Twitter } from "lucide-react";
+import { Code, Github, Twitter, Linkedin } from "lucide-react";
 
 export default function Footer() {
   return (
-    <footer className="bg-zinc-50 dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+    <footer className="border-t border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
+          
           {/* Brand */}
-          <div className="md:col-span-1">
-            <Link href="/" className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-purple-700 rounded-lg flex items-center justify-center">
-                <Code className="w-4 h-4 text-white" />
-              </div>
-              <span className="text-xl font-semibold text-zinc-900 dark:text-white">CodiFY</span>
-            </Link>
-            <p className="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-6">
-              Modern coding education platform for teachers and students. Build better code, together.
-            </p>
-            <div className="flex gap-4">
-              <a
-                href="#"
-                className="p-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
-              >
-                <Github className="w-5 h-5" />
-              </a>
-              <a
-                href="#"
-                className="p-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
-              >
-                <Twitter className="w-5 h-5" />
-              </a>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
+              <Code className="w-4 h-4 text-white" />
             </div>
+            <span className="text-xl font-semibold text-gray-900 dark:text-white">CodiFY</span>
           </div>
 
-          {/* Product */}
-          <div>
-            <h4 className="font-semibold text-zinc-900 dark:text-white mb-4">Product</h4>
-            <ul className="space-y-3">
-              <li>
-                <Link href="/dashboard" className="text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">
-                  Dashboard
-                </Link>
-              </li>
-              <li>
-                <Link href="#features" className="text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">
-                  Features
-                </Link>
-              </li>
-              <li>
-                <Link href="/pricing" className="text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">
-                  Pricing
-                </Link>
-              </li>
-            </ul>
+          {/* Quick Links */}
+          <div className="flex gap-8">
+            <Link 
+              href="/docs" 
+              className="text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-zinc-900 rounded-lg px-2 py-1"
+            >
+              Docs
+            </Link>
+            <Link 
+              href="/contact" 
+              className="text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-zinc-900 rounded-lg px-2 py-1"
+            >
+              Contact
+            </Link>
           </div>
 
-          {/* Support */}
-          <div>
-            <h4 className="font-semibold text-zinc-900 dark:text-white mb-4">Support</h4>
-            <ul className="space-y-3">
-              <li>
-                <Link href="/docs" className="text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">
-                  Documentation
-                </Link>
-              </li>
-              <li>
-                <Link href="/help" className="text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">
-                  Help Center
-                </Link>
-              </li>
-              <li>
-                <Link href="/contact" className="text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">
-                  Contact
-                </Link>
-              </li>
-            </ul>
+          {/* Social Links */}
+          <div className="flex gap-3">
+            <a
+              href="#"
+              className="w-9 h-9 bg-gray-100 dark:bg-zinc-800 hover:bg-gray-900 dark:hover:bg-white rounded-lg flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-zinc-900"
+            >
+              <Github className="w-4 h-4 text-gray-600 dark:text-gray-400 hover:text-white dark:hover:text-gray-900" />
+            </a>
+            <a
+              href="#"
+              className="w-9 h-9 bg-gray-100 dark:bg-zinc-800 hover:bg-blue-500 rounded-lg flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-zinc-900"
+            >
+              <Twitter className="w-4 h-4 text-gray-600 dark:text-gray-400 hover:text-white" />
+            </a>
+            <a
+              href="#"
+              className="w-9 h-9 bg-gray-100 dark:bg-zinc-800 hover:bg-blue-600 rounded-lg flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-zinc-900"
+            >
+              <Linkedin className="w-4 h-4 text-gray-600 dark:text-gray-400 hover:text-white" />
+            </a>
           </div>
         </div>
 
         {/* Bottom */}
-        <div className="border-t border-zinc-200 dark:border-zinc-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        <div className="border-t border-gray-200 dark:border-zinc-800 mt-8 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
             © {new Date().getFullYear()} CodiFY. All rights reserved.
           </p>
-          <div className="flex items-center gap-6 mt-4 md:mt-0">
-            <Link href="/privacy" className="text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">
+          <div className="flex items-center gap-6">
+            <Link 
+              href="/privacy" 
+              className="text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-zinc-900 rounded-lg px-2 py-1"
+            >
               Privacy
             </Link>
-            <Link href="/terms" className="text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">
+            <Link 
+              href="/terms" 
+              className="text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-zinc-900 rounded-lg px-2 py-1"
+            >
               Terms
             </Link>
           </div>

@@ -5,7 +5,7 @@ import { Mail, MapPin, Phone, Clock, MessageSquare, Github, Twitter, Linkedin, H
 
 export const metadata: Metadata = {
   title: "Contact Us - CodiFY",
-  description: "Get in touch with the CodiFY team. ",
+  description: "Get in touch with the CodiFY team. We're here to help with your coding education journey.",
 };
 
 export default function ContactPage() {
