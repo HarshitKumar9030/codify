@@ -1,3 +1,7 @@
+// Main CodeExecution Route
+// Handles only the standard mode of code execution not the WebSocket-based execution.
+// Code By: @harshitkumar9030
+
 import express from 'express';
 import Joi from 'joi';
 import { v4 as uuidv4 } from 'uuid';
@@ -61,13 +65,13 @@ router.post('/', validateRequest(executeCodeSchema), async (req, res) => {
       estimatedTime: `${timeout}s`,
     });
 
-    // Handle execution in background
+    // background execution 
     executionPromise.catch(error => {
-      console.error(`❌ Execution ${executionId} failed:`, error.message);
+      console.error(`Execution ${executionId} failed:`, error.message);
     });
 
   } catch (error) {
-    console.error('❌ Execute endpoint error:', error);
+    console.error('Execute endpoint error:', error);
     res.status(500).json({
       success: false,
       error: 'Internal server error',
@@ -76,10 +80,12 @@ router.post('/', validateRequest(executeCodeSchema), async (req, res) => {
   }
 });
 
+
 /**
  * GET /api/execute/:executionId
  * Get execution result by ID
  */
+
 router.get('/:executionId', validateRequest(getResultSchema, 'params'), async (req, res) => {
   try {
     const { executionId } = req.params;
@@ -101,7 +107,7 @@ router.get('/:executionId', validateRequest(getResultSchema, 'params'), async (r
     });
 
   } catch (error) {
-    console.error('❌ Get result endpoint error:', error);
+    console.error('Get result endpoint error:', error);
     res.status(500).json({
       success: false,
       error: 'Internal server error',
@@ -110,10 +116,13 @@ router.get('/:executionId', validateRequest(getResultSchema, 'params'), async (r
   }
 });
 
+
 /**
  * DELETE /api/execute/:executionId
  * Cancel running execution
  */
+
+
 router.delete('/:executionId', validateRequest(getResultSchema, 'params'), async (req, res) => {
   try {
     const { executionId } = req.params;
@@ -136,7 +145,7 @@ router.delete('/:executionId', validateRequest(getResultSchema, 'params'), async
     });
 
   } catch (error) {
-    console.error('❌ Cancel execution endpoint error:', error);
+    console.error('Cancel execution endpoint error:', error);
     res.status(500).json({
       success: false,
       error: 'Internal server error',
@@ -145,10 +154,13 @@ router.delete('/:executionId', validateRequest(getResultSchema, 'params'), async
   }
 });
 
+
 /**
  * POST /api/execute/file
  * Execute a file from user's file system
  */
+
+
 const executeFileSchema = Joi.object({
   userId: Joi.string().required(),
   filePath: Joi.string().required().max(1000),
@@ -161,15 +173,8 @@ router.post('/file', validateRequest(executeFileSchema), async (req, res) => {
     const { userId, filePath, input, timeout } = req.body;
     const executionId = uuidv4();
     
-    // Log file execution attempt
-    console.log(`File execution request ${executionId}: ${filePath}`, {
-      userId,
-      hasInput: !!input,
-      inputLength: input ? input.length : 0,
-      timeout
-    });
+
     
-    // Start file execution (async)
     const executionPromise = executionService.executeFile({
       executionId,
       userId,
@@ -208,7 +213,7 @@ router.post('/file', validateRequest(executeFileSchema), async (req, res) => {
     }
 
   } catch (error) {
-    console.error('❌ File execution endpoint error:', error);
+    console.error('File execution endpoint error:', error);
     res.status(500).json({
       success: false,
       error: 'Internal server error',
@@ -217,10 +222,13 @@ router.post('/file', validateRequest(executeFileSchema), async (req, res) => {
   }
 });
 
+
 /**
  * GET /api/execute
  * Get supported languages and their configurations
  */
+
+
 router.get('/', (req, res) => {
   res.json({
     success: true,

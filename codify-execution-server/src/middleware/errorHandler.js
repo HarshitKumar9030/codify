@@ -1,8 +1,5 @@
-/**
- * Error handling middleware
- */
 function errorHandler(error, req, res, next) {
-  console.error('❌ Error occurred:', {
+  console.error('Error occurred:', {
     message: error.message,
     stack: error.stack,
     url: req.url,
@@ -44,7 +41,6 @@ function errorHandler(error, req, res, next) {
     message = 'Payload too large';
   }
 
-  // Custom error response
   const errorResponse = {
     success: false,
     error: message,
@@ -52,7 +48,6 @@ function errorHandler(error, req, res, next) {
     requestId: req.id || 'unknown'
   };
 
-  // Add details in development mode or for validation errors
   if (isDevelopment || error.name === 'ValidationError') {
     errorResponse.details = details || error.message;
     if (isDevelopment) {

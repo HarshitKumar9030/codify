@@ -1,6 +1,4 @@
-/**
- * Request validation middleware using Joi schemas
- */
+// Validate Requests using Joi Schemes
 export function validateRequest(schema, target = 'body') {
   return (req, res, next) => {
     const dataToValidate = target === 'params' ? req.params :

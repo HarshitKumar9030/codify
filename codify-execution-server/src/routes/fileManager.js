@@ -1,3 +1,7 @@
+// FileManager Route
+// This file handles file management operations such as uploading, downloading, listing, and modifying files.
+// Code By: @harshitkumar9030
+
 import express from 'express';
 import multer from 'multer';
 import FileManagerService from '../services/fileManagerService.js';
@@ -8,6 +12,9 @@ const router = express.Router();
 const fileManager = new FileManagerService();
 
 // Configure multer for file uploads
+// used for chat image uploads and other file uploads
+
+
 const storage = multer.memoryStorage();
 const upload = multer({ 
   storage,
@@ -20,7 +27,6 @@ const upload = multer({
   }
 });
 
-// Helper function to get MIME type
 function getMimeType(filename) {
   const ext = path.extname(filename).toLowerCase();
   const mimeTypes = {
@@ -39,7 +45,7 @@ function getMimeType(filename) {
   return mimeTypes[ext] || 'application/octet-stream';
 }
 
-// POST /upload - Upload a file
+
 router.post('/upload', upload.single('file'), async (req, res) => {
   try {
     const { userId, requestingUserId, path: filePath } = req.body;
@@ -59,7 +65,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       });
     }
 
-    // Validate user access
+
     await fileManager.validateUserAccess(requestingUserId, userId, false);
 
     // Create the file
@@ -81,7 +87,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
   }
 });
 
-// GET /download - Download a file
+
 router.get('/download', async (req, res) => {
   try {
     const { userId, path: filePath } = req.query;
@@ -98,7 +104,7 @@ router.get('/download', async (req, res) => {
     const fullPath = fileManager.getFullPath(userId, filePath);
     const stat = await fs.stat(fullPath);
 
-    // Set appropriate headers
+
     const filename = path.basename(filePath);
     const mimeType = getMimeType(filename);
     
@@ -106,7 +112,7 @@ router.get('/download', async (req, res) => {
     res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
     res.setHeader('Content-Length', stat.size);
 
-    // Send file content
+
     if (typeof content === 'string') {
       res.send(content);
     } else {
@@ -121,7 +127,7 @@ router.get('/download', async (req, res) => {
   }
 });
 
-// GET /api/files - List files in user directory
+
 router.get('/', async (req, res) => {
   try {
     const { userId, path, classroomId, isTeacher, requestingUserId } = req.query;
@@ -167,7 +173,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /api/files/content - Get file content
+
 router.get('/content', async (req, res) => {
   try {
     const { userId, path, classroomId, isTeacher, requestingUserId } = req.query;
@@ -210,7 +216,7 @@ router.get('/content', async (req, res) => {
   }
 });
 
-// POST /api/files - Create, update, or delete files/directories
+
 router.post('/', async (req, res) => {
   try {
     const { userId, path, content, action, classroomId, isTeacher, requestingUserId } = req.body;
@@ -279,7 +285,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-// GET /api/files/download - Download a file
+
 router.get('/download', async (req, res) => {
   try {
     const { userId, path, classroomId, isTeacher, requestingUserId } = req.query;

@@ -1,8 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 
-/**
- * Request logging middleware
- */
+
 function requestLogger(req, res, next) {
   // Generate unique request ID
   req.id = uuidv4();
@@ -12,7 +10,7 @@ function requestLogger(req, res, next) {
   const userAgent = req.get('User-Agent') || 'unknown';
 
   // Log request start
-  console.log(`📝 ${method} ${url} - ${ip} - ${req.id} - ${userAgent}`);
+  console.log(`${method} ${url} - ${ip} - ${req.id} - ${userAgent}`);
 
   // Override res.end to log response
   const originalEnd = res.end;

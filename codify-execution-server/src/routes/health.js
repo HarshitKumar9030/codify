@@ -9,6 +9,7 @@ const execAsync = promisify(exec);
  * GET /api/health
  * Basic health check endpoint
  */
+
 router.get('/', (req, res) => {
   res.json({
     status: 'healthy',
@@ -23,6 +24,7 @@ router.get('/', (req, res) => {
  * GET /api/health/detailed
  * Detailed health check including system resources
  */
+
 router.get('/detailed', async (req, res) => {
   try {
     const health = {
@@ -82,7 +84,7 @@ router.get('/detailed', async (req, res) => {
 
     res.json(health);
   } catch (error) {
-    console.error('❌ Health check error:', error);
+    console.error('Health check error:', error);
     res.status(500).json({
       status: 'unhealthy',
       timestamp: new Date().toISOString(),
@@ -95,6 +97,7 @@ router.get('/detailed', async (req, res) => {
  * GET /api/health/ready
  * Readiness probe for container orchestration
  */
+
 router.get('/ready', async (req, res) => {
   try {
     // Check if critical dependencies are available
@@ -129,7 +132,7 @@ router.get('/ready', async (req, res) => {
       checks
     });
   } catch (error) {
-    console.error('❌ Readiness check error:', error);
+    console.error('Readiness check error:', error);
     res.status(503).json({
       status: 'not ready',
       timestamp: new Date().toISOString(),
