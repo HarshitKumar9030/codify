@@ -49,6 +49,10 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  // Password reset fields
+  resetToken       String?
+  resetTokenExpiry DateTime?
+
   // Onboarding fields
   onboardingCompleted Boolean @default(false)
   bio                String?

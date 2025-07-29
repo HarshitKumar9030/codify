@@ -31,49 +31,53 @@ export default function Navigation() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md border-b border-zinc-200/20 dark:border-zinc-800/40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex items-center h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="relative">
-              <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-purple-700 rounded-lg flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
-                <Code className="w-4 h-4 text-white" />
+          <div className="flex-shrink-0">
+            <Link href="/" className="flex items-center gap-3 group">
+              <div className="relative">
+                <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-purple-700 rounded-lg flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
+                  <Code className="w-4 h-4 text-white" />
+                </div>
               </div>
-            </div>
-            <span className="text-xl font-semibold text-zinc-900 dark:text-white">CodiFY</span>
-          </Link>
-
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-1">
-            {session && (
-              <Link 
-                href="/dashboard" 
-                className="px-3 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50 rounded-md transition-all duration-200"
-              >
-                Dashboard
-              </Link>
-            )}
-            <Link 
-              href="#features" 
-              className="px-3 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50 rounded-md transition-all duration-200"
-            >
-              Features
-            </Link>
-            <Link 
-              href="/docs" 
-              className="px-3 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50 rounded-md transition-all duration-200"
-            >
-              Docs
-            </Link>
-            <Link 
-              href="/contact" 
-              className="px-3 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50 rounded-md transition-all duration-200"
-            >
-              Contact
+              <span className="text-xl font-semibold text-zinc-900 dark:text-white">CodiFY</span>
             </Link>
           </div>
 
-          {/* Desktop CTA */}
-          <div className="hidden md:flex items-center gap-3">
+          {/* Desktop Navigation - Centered */}
+          <div className="hidden md:flex flex-1 justify-center">
+            <div className="flex items-center gap-1">
+              {session && (
+                <Link 
+                  href="/dashboard" 
+                  className="px-3 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50 rounded-md transition-all duration-200"
+                >
+                  Dashboard
+                </Link>
+              )}
+              <Link 
+                href="#features" 
+                className="px-3 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50 rounded-md transition-all duration-200"
+              >
+                Features
+              </Link>
+              <Link 
+                href="/docs" 
+                className="px-3 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50 rounded-md transition-all duration-200"
+              >
+                Docs
+              </Link>
+              <Link 
+                href="/contact" 
+                className="px-3 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50 rounded-md transition-all duration-200"
+              >
+                Contact
+              </Link>
+            </div>
+          </div>
+
+          {/* Desktop CTA - Right side */}
+          <div className="hidden md:flex items-center gap-3 flex-shrink-0">
             <ThemeToggle />
             {session ? (
               <div className="relative">
@@ -149,15 +153,17 @@ export default function Navigation() {
           </div>
 
           {/* Mobile Menu Button */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsMenuOpen(!isMenuOpen);
-            }}
-            className="md:hidden p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50 rounded-md transition-all"
-          >
-            {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
+          <div className="md:hidden flex-1 flex justify-end">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsMenuOpen(!isMenuOpen);
+              }}
+              className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50 rounded-md transition-all"
+            >
+              {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
         </div>
 
         {/* Mobile Menu */}
