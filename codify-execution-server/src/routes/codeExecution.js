@@ -5,11 +5,11 @@
 import express from 'express';
 import Joi from 'joi';
 import { v4 as uuidv4 } from 'uuid';
-import FastSecureExecutionService from '../services/fastSecureExecutionService.js';
+import standardExecutionService from '../services/standardExecutionService.js';
 import { validateRequest } from '../middleware/validation.js';
 
 const router = express.Router();
-const executionService = new FastSecureExecutionService();
+const executionService = new standardExecutionService();
 
 const executeCodeSchema = Joi.object({
   code: Joi.string().required().max(25000), // 25KB limit for fast validation

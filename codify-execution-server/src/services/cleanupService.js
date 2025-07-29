@@ -5,10 +5,9 @@ import { tmpdir } from 'os';
 class CleanupService {
   constructor() {
     this.tempDirs = [
-      path.join(tmpdir(), 'codify-fast'),      // Fast execution temp files
-      path.join(tmpdir(), 'codify-ws-secure'), // WebSocket execution temp files
+      path.join(tmpdir(), 'codify-fast'),      // Fast execution temp files, isnt used as of now, for future use
+      path.join(tmpdir(), 'codify-ws-secure'), // WebSocket execution temp files, isnt used as of now, for future use
       path.join(process.cwd(), 'temp'),        // Legacy temp files
-      path.join(process.cwd(), 'user-files')   // User files cleanup
     ];
     
     this.cleanupInterval = 5 * 60 * 1000; // 5 minutes
@@ -97,8 +96,8 @@ class CleanupService {
       totalCleaned += legacyResults.count;
       totalSize += legacyResults.size;
       
-      // Clean old user file sessions (but keep recent ones)
-      const userResults = await this.cleanupUserFiles();
+      // Clean old persistent executor files from user directories (but keep user files)
+      const userResults = await this.cleanupPersistentExecutors();
       totalCleaned += userResults.count;
       totalSize += userResults.size;
       
@@ -164,7 +163,7 @@ class CleanupService {
     return { count: cleanedCount, size: cleanedSize };
   }
 
-  async cleanupUserFiles() {
+  async cleanupPersistentExecutors() {
     let cleanedCount = 0;
     let cleanedSize = 0;
     
@@ -177,46 +176,66 @@ class CleanupService {
           const userDir = path.join(userFilesDir, entry.name);
           
           try {
-            // Check for .session files to determine last activity
-            const sessionFiles = await this.findSessionFiles(userDir);
-            let lastActivity = 0;
-            
-            // Find most recent activity
-            for (const sessionFile of sessionFiles) {
-              try {
-                const stats = await fs.stat(sessionFile);
-                lastActivity = Math.max(lastActivity, stats.mtime.getTime());
-              } catch (error) {
-                // Session file might not exist
-              }
-            }
-            
-            // If no session files, use directory modification time
-            if (lastActivity === 0) {
-              const stats = await fs.stat(userDir);
-              lastActivity = stats.mtime.getTime();
-            }
-            
-            const age = Date.now() - lastActivity;
-            
-            // Clean up old user sessions
-            if (age > this.maxAge.userFiles) {
-              const dirSize = await this.getDirectorySize(userDir);
-              await fs.rm(userDir, { recursive: true, force: true });
-              cleanedCount++;
-              cleanedSize += dirSize;
-            }
+            // Recursively find and clean persistent executor files
+            const results = await this.cleanupPersistentExecutorsInDir(userDir);
+            cleanedCount += results.count;
+            cleanedSize += results.size;
             
           } catch (error) {
-            // Directory might have been deleted already
+            // Directory might not be accessible
+            console.error(`Error cleaning persistent executors in ${userDir}:`, error.message);
           }
         }
       }
       
     } catch (error) {
       if (error.code !== 'ENOENT') {
-        console.error('Error cleaning user files:', error.message);
+        console.error('Error cleaning persistent executors:', error.message);
       }
+    }
+    
+    return { count: cleanedCount, size: cleanedSize };
+  }
+
+  async cleanupPersistentExecutorsInDir(dirPath) {
+    let cleanedCount = 0;
+    let cleanedSize = 0;
+    
+    try {
+      const entries = await fs.readdir(dirPath, { withFileTypes: true });
+      
+      for (const entry of entries) {
+        const fullPath = path.join(dirPath, entry.name);
+        
+        if (entry.isFile()) {
+          // Check if it's a persistent executor file
+          if (entry.name.startsWith('persistent_executor.') || 
+              entry.name === 'persistent_executor.py' || 
+              entry.name === 'persistent_executor.js') {
+            
+            try {
+              const stats = await fs.stat(fullPath);
+              const age = Date.now() - stats.mtime.getTime();
+              
+              // Clean up persistent executors older than 30 minutes
+              if (age > this.maxAge.execution) {
+                cleanedSize += stats.size;
+                await fs.unlink(fullPath);
+                cleanedCount++;
+              }
+            } catch (error) {
+              // File might have been deleted already
+            }
+          }
+        } else if (entry.isDirectory()) {
+          // Recursively search subdirectories
+          const results = await this.cleanupPersistentExecutorsInDir(fullPath);
+          cleanedCount += results.count;
+          cleanedSize += results.size;
+        }
+      }
+    } catch (error) {
+      // Directory might not exist or not be accessible
     }
     
     return { count: cleanedCount, size: cleanedSize };

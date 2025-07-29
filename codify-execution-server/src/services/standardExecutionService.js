@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { tmpdir } from 'os';
 import fs from 'fs';
 
-class FastSecureExecutionService {
+class standardExecutionService {
   constructor() {
     this.executions = new Map();
     this.runningExecutions = new Map();
@@ -688,4 +688,4 @@ try {
   }
 }
 
-export default FastSecureExecutionService;
+export default standardExecutionService;
