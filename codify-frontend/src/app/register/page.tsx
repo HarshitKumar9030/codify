@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
 import AuthLoading from "@/components/AuthLoading";
 import Navigation from "@/components/layout/Navigation";
 import { Eye, EyeOff, UserPlus, Users, BookOpen } from "lucide-react";
 
-export default function Register() {
+function RegisterContent() {
   const { isAuthenticated, isLoading: authLoading } = useAuthRedirect();
   const searchParams = useSearchParams();
   const initialRole = searchParams.get("role") as "teacher" | "student" || "student";
@@ -57,12 +57,10 @@ export default function Register() {
     });
   };
 
-  // Show loading screen while checking authentication
   if (authLoading) {
     return <AuthLoading message="Checking authentication..." />;
   }
 
-  // Don't render register form if user is authenticated (they'll be redirected)
   if (isAuthenticated) {
     return <AuthLoading message="Redirecting to dashboard..." />;
   }
@@ -90,7 +88,6 @@ export default function Register() {
                 </div>
               )}
 
-              {/* Role Selection */}
               <div>
                 <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
                   I am a
@@ -232,5 +229,13 @@ export default function Register() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function Register() {
+  return (
+    <Suspense fallback={<AuthLoading message="Loading register..." />}> 
+      <RegisterContent />
+    </Suspense>
   );
 }

@@ -1,9 +1,23 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import WebSocketManager, { type WebSocketMessage } from '../utils/WebSocketManager';
+import { WS_PATH, WS_URL, EXECUTION_SERVER_URL } from '@/app/api/config/execution';
 
-// Get WebSocket server URL from environment variable or fallback to localhost
-const WS_SERVER_URL = process.env.REACT_APP_WS_SERVER_URL || process.env.NEXT_PUBLIC_WS_SERVER_URL || 'ws://localhost:8080';
-const HTTP_SERVER_URL = (process.env.REACT_APP_WS_SERVER_URL || process.env.NEXT_PUBLIC_WS_SERVER_URL || 'ws://localhost:8080').replace('ws://', 'http://').replace('wss://', 'https://');
+const getEffectiveWsUrl = () => {
+  if (WS_URL) return WS_URL;
+  if (typeof window !== 'undefined') {
+    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${proto}//${window.location.host}${WS_PATH}`;
+  }
+  return 'ws://localhost:8080';
+};
+
+const getEffectiveHttpBase = () => {
+  if (EXECUTION_SERVER_URL) return EXECUTION_SERVER_URL;
+  if (typeof window !== 'undefined') return window.location.origin;
+  return 'http://localhost:8080';
+};
+
+// Note: resolve endpoints at runtime (in browser) to avoid SSR defaults leaking
 
 export function useWebSocketExecution(userId: string | undefined) {
   const [isConnected, setIsConnected] = useState(false);
@@ -75,7 +89,7 @@ export function useWebSocketExecution(userId: string | undefined) {
     
     try {
       const start = Date.now();
-      const response = await fetch(`${HTTP_SERVER_URL}/api/ping`, {
+      const response = await fetch(`${getEffectiveHttpBase()}/api/ping`, {
         method: 'GET',
         mode: 'cors',
         cache: 'no-cache'
@@ -110,7 +124,7 @@ export function useWebSocketExecution(userId: string | undefined) {
       
       try {
         const start = Date.now();
-        const response = await fetch(`${HTTP_SERVER_URL}/api/ping`, {
+        const response = await fetch(`${getEffectiveHttpBase()}/api/ping`, {
           method: 'GET',
           mode: 'cors',
           cache: 'no-cache'
@@ -139,8 +153,9 @@ export function useWebSocketExecution(userId: string | undefined) {
     // Add listeners
     manager.addListener(id, handleWebSocketMessage);
     
-    // Connect
-    manager.connect(WS_SERVER_URL).catch(error => {
+  // Connect
+  const wsUrl = getEffectiveWsUrl();
+  manager.connect(wsUrl).catch(error => {
       console.error('Failed to connect to WebSocket:', error);
     });
 

@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { excuseId: string } }
+  { params }: { params: Promise<{ excuseId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -17,7 +17,7 @@ export async function POST(
       );
     }
 
-    const excuseId = params.excuseId;
+  const { excuseId } = await params;
     const { status, teacherNote } = await request.json();
 
     if (!['APPROVED', 'REJECTED'].includes(status)) {
@@ -98,7 +98,7 @@ export async function POST(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { excuseId: string } }
+  { params }: { params: Promise<{ excuseId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -110,7 +110,7 @@ export async function GET(
       );
     }
 
-    const excuseId = params.excuseId;
+  const { excuseId } = await params;
 
     const excuse = await prisma.submissionExcuse.findUnique({
       where: { id: excuseId },

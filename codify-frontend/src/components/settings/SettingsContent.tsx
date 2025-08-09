@@ -38,6 +38,10 @@ export default function SettingsContent({ user }: SettingsContentProps) {
     confirm: false,
   });
 
+  const formattedRole = user.role
+    ? user.role.charAt(0).toUpperCase() + user.role.slice(1).toLowerCase()
+    : "N/A";
+
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -199,7 +203,7 @@ export default function SettingsContent({ user }: SettingsContentProps) {
                   Role
                 </label>
                 <div className="px-4 py-3 rounded-2xl border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 text-gray-600 dark:text-gray-400">
-                  {user.role?.charAt(0).toUpperCase() + user.role?.slice(1).toLowerCase()}
+                  {formattedRole}
                 </div>
               </div>
 

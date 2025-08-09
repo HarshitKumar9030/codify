@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { signIn, getSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
@@ -8,7 +8,7 @@ import AuthLoading from "@/components/AuthLoading";
 import Link from "next/link";
 import { Eye, EyeOff, LogIn, ArrowLeft, AlertCircle, CheckCircle } from "lucide-react";
 
-export default function SignIn() {
+function SignInContent() {
   const { isAuthenticated, isLoading: authLoading } = useAuthRedirect();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -222,5 +222,20 @@ export default function SignIn() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignIn() {
+  return (
+    <Suspense
+      fallback={
+        <AuthLoading
+          message="Loading sign in..."
+          className="min-h-screen bg-gradient-to-b from-zinc-50 to-white dark:from-zinc-950 dark:to-zinc-900"
+        />
+      }
+    >
+      <SignInContent />
+    </Suspense>
   );
 }

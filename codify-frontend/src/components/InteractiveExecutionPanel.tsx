@@ -7,9 +7,17 @@ import { useTheme } from "next-themes";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { WS_PATH, WS_URL } from '@/app/api/config/execution';
 
-// Get WebSocket server URL from environment variable or fallback to localhost
-const WS_SERVER_URL = process.env.REACT_APP_WS_SERVER_URL || process.env.NEXT_PUBLIC_WS_SERVER_URL || 'ws://localhost:8080';
+const getEffectiveWsUrl = () => {
+  if (WS_URL) return WS_URL;
+  if (typeof window !== 'undefined') {
+    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${proto}//${window.location.host}${WS_PATH}`;
+  }
+  return 'ws://localhost:8080';
+};
+const getWsUrl = () => getEffectiveWsUrl();
 
 interface InteractiveExecutionPanelProps {
   code?: string;
@@ -18,7 +26,7 @@ interface InteractiveExecutionPanelProps {
   onCodeChange?: (code: string) => void;
   userId?: string;
   className?: string;
-  isAssignmentPage?: boolean; // New prop to detect assignment page
+  isAssignmentPage?: boolean; 
 }
 
 export default function InteractiveExecutionPanel({
@@ -30,7 +38,6 @@ export default function InteractiveExecutionPanel({
   className = '',
   isAssignmentPage = false
 }: InteractiveExecutionPanelProps) {
-  // Internal state for code and language
   const [code, setCode] = useState(initialCode || (isAssignmentPage ? "# Write your solution here\n\n" : `// Welcome to CodiFY!
 // Write your JavaScript code here and click Run to execute
 
@@ -66,19 +73,16 @@ console.log("Ready to start coding!");`));
     ping
   } = useWebSocketExecution(userId);
 
-  // Mount detection to prevent hydration mismatches
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  // Auto-scroll output to bottom
   useEffect(() => {
     if (outputRef.current) {
       outputRef.current.scrollTop = outputRef.current.scrollHeight;
     }
   }, [output, wsOutput]);
 
-  // Show input dialog when WebSocket requests input
   useEffect(() => {
     if (isWaitingForInput && !showInputDialog) {
       setShowInputDialog(true);
@@ -132,27 +136,20 @@ console.log("Ready to start coding!");`));
   };
 
   const handleExecute = () => {
-    console.log('🚀 Execute triggered:', { useWebSocket, isConnected, code: code.slice(0, 50) + '...' });
     
-    // Force WebSocket execution and try to connect if not connected
     if (useWebSocket) {
       if (isConnected) {
-        console.log('✅ Using WebSocket execution (connected)');
         handleWebSocketExecution();
       } else {
-        console.log('🔄 WebSocket not connected, attempting connection...');
-        // Try to reconnect and then execute
-        const wsManager = WebSocketManager.getInstance();
-        wsManager.connect(WS_SERVER_URL).then(() => {
-          console.log('✅ WebSocket connected, executing...');
+  const wsManager = WebSocketManager.getInstance();
+  wsManager.connect(getWsUrl()).then(() => {
           handleWebSocketExecution();
         }).catch((error: Error) => {
-          console.error('❌ WebSocket connection failed, falling back to HTTP:', error);
+          console.error('WebSocket connection failed, falling back to HTTP:', error);
           handleTraditionalExecution();
         });
       }
     } else {
-      console.log('📡 Using HTTP execution (WebSocket disabled)');
       handleTraditionalExecution();
     }
   };
@@ -181,12 +178,10 @@ console.log("Ready to start coding!");`));
   const currentOutput = useWebSocket ? wsOutput.join('\n') : output;
   const currentIsExecuting = useWebSocket ? wsIsExecuting : isExecuting;
 
-  // Simplified layout for assignment page
   if (isAssignmentPage) {
     return (
       <div className={`w-full ${className}`}>
         <div className="space-y-4">
-          {/* Code Editor */}
           <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
             <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700">
               <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Your Solution</h3>
@@ -223,7 +218,6 @@ console.log("Ready to start coding!");`));
             />
           </div>
 
-          {/* Compact Test & Run Section */}
           <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700">
             <div className="flex items-center space-x-2">
               <span className="text-sm text-zinc-600 dark:text-zinc-400">Test your code:</span>
@@ -270,7 +264,6 @@ console.log("Ready to start coding!");`));
             </div>
           </div>
 
-          {/* Output (only show if there's output) */}
           {(currentOutput || currentIsExecuting) && (
             <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
               <div className="p-2 bg-zinc-50 dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700">
@@ -284,7 +277,6 @@ console.log("Ready to start coding!");`));
             </div>
           )}
 
-          {/* Input field (only show when needed) */}
           {(language === "python" || language === "javascript") && (
             <details className="border border-zinc-200 dark:border-zinc-700 rounded-lg">
               <summary className="p-3 bg-zinc-50 dark:bg-zinc-800 cursor-pointer text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -347,11 +339,9 @@ console.log("Ready to start coding!");`));
     );
   }
 
-  // Full layout for dashboard
   return (
     <div className={`w-full ${className}`}>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[600px]">
-        {/* Code Input */}
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Code Editor</h3>
@@ -401,7 +391,6 @@ console.log("Ready to start coding!");`));
           )}
         </div>
 
-        {/* Execution Panel */}
         <div className="flex flex-col h-full">
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden h-full flex flex-col">
             <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-900/20 border-b border-zinc-200 dark:border-zinc-700">
@@ -469,7 +458,6 @@ console.log("Ready to start coding!");`));
         </div>
       </div>
 
-      {/* Input Dialog */}
       {showInputDialog && isWaitingForInput && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white dark:bg-zinc-800 rounded-lg p-6 w-96 shadow-xl">

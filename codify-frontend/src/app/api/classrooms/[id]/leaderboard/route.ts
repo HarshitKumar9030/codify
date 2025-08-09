@@ -92,8 +92,7 @@ export async function GET(
       averageScore: stats.totalScores.length > 0 
         ? Math.round(stats.totalScores.reduce((a: number, b: number) => a + b, 0) / stats.totalScores.length)
         : 0
-    })).sort((a, b) => {
-      // Sort by total points, then by average score, then by completed assignments
+  })).sort((a, b) => {
       if (b.totalPoints !== a.totalPoints) {
         return b.totalPoints - a.totalPoints;
       }

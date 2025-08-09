@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { executionId: string } }
+  { params }: { params: Promise<{ executionId?: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -190,7 +190,7 @@ export async function GET(
       );
     }
 
-    const { executionId } = params;
+  const { executionId } = await params;
 
     if (!executionId) {
       return NextResponse.json(

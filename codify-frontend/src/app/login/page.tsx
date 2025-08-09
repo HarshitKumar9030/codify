@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
@@ -8,7 +8,7 @@ import AuthLoading from "@/components/AuthLoading";
 import Navigation from "@/components/layout/Navigation";
 import { Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
 
-export default function Login() {
+function LoginContent() {
   const { isAuthenticated, isLoading: authLoading } = useAuthRedirect();
   const [formData, setFormData] = useState({
     email: "",
@@ -56,7 +56,6 @@ export default function Login() {
       if (result?.error) {
         setError("Invalid email or password. Please try again.");
       } else if (result?.ok) {
-        // Redirect will be handled by the auth callback
         router.push("/dashboard");
       }
     } catch {
@@ -73,12 +72,10 @@ export default function Login() {
     });
   };
 
-  // Show loading screen while checking authentication
   if (authLoading) {
     return <AuthLoading message="Checking authentication..." />;
   }
 
-  // Don't render login form if user is authenticated (they'll be redirected)
   if (isAuthenticated) {
     return <AuthLoading message="Redirecting to dashboard..." />;
   }
@@ -225,5 +222,13 @@ export default function Login() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function Login() {
+  return (
+    <Suspense fallback={<AuthLoading message="Loading login..." />}> 
+      <LoginContent />
+    </Suspense>
   );
 }
