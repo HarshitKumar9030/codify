@@ -4,7 +4,6 @@ import { authOptions } from "@/lib/auth";
 
 const EXECUTION_SERVER_URL = process.env.EXECUTION_SERVER_URL || 'http://localhost:8080';
 
-// GET /api/files/[...path] - Get file content
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }

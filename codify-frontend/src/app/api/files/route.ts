@@ -4,7 +4,6 @@ import { authOptions } from "@/lib/auth";
 
 const EXECUTION_SERVER_URL = process.env.EXECUTION_SERVER_URL || 'http://localhost:8080';
 
-// GET /api/files - List files in user directory
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -20,28 +19,17 @@ export async function GET(request: NextRequest) {
     const path = url.searchParams.get('path') || '/';
     const classroomId = url.searchParams.get('classroomId');
     const isTeacher = url.searchParams.get('isTeacher');
-    const targetUserId = url.searchParams.get('userId'); // This is the target user whose files we want to view
-    const requestingUserId = url.searchParams.get('requestingUserId'); // This is the teacher making the request
-
-    // For teachers: use targetUserId if provided, otherwise use session user ID
-    // For students: always use session user ID
+    const targetUserId = url.searchParams.get('userId');
+    const requestingUserId = url.searchParams.get('requestingUserId'); 
+ 
     const effectiveUserId = targetUserId || session.user.id;
     const effectiveRequestingUserId = requestingUserId || session.user.id;
 
-    console.log('📁 File API params:', {
-      targetUserId,
-      requestingUserId,
-      effectiveUserId,
-      effectiveRequestingUserId,
-      isTeacher,
-      classroomId,
-      sessionUserId: session.user.id
-    });
 
     const params = new URLSearchParams({
-      userId: effectiveUserId, // Whose files to show
+      userId: effectiveUserId, 
       path: path,
-      requestingUserId: effectiveRequestingUserId, // Who is making the request
+      requestingUserId: effectiveRequestingUserId,
       ...(classroomId && { classroomId }),
       ...(isTeacher && { isTeacher })
     });
@@ -77,7 +65,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/files - Create or update file
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -105,7 +92,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Use target user ID if provided (for teachers), otherwise use session user ID
     const effectiveUserId = targetUserId || session.user.id;
 
     const requestBody = {
@@ -113,7 +99,7 @@ export async function POST(request: NextRequest) {
       path,
       content: content || '',
       action,
-      requestingUserId: session.user.id, // Always pass the session user as the requesting user
+      requestingUserId: session.user.id, 
       classroomId,
       isTeacher
     };
