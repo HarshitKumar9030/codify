@@ -8,7 +8,6 @@ const __dirname = dirname(__filename);
 
 class FileManagerService {
   constructor() {
-    // Base directory for user files (relative to server root)
     this.baseDir = path.join(__dirname, '../../user-files');
     this.initializeBaseDirectory();
   }
@@ -17,9 +16,8 @@ class FileManagerService {
     try {
       await fs.access(this.baseDir);
     } catch (error) {
-      // Directory doesn't exist, create it
       await fs.mkdir(this.baseDir, { recursive: true });
-      console.log(`📁 Created user files directory: ${this.baseDir}`);
+      console.log(`Created user files directory: ${this.baseDir}`);
     }
   }
 
@@ -28,16 +26,36 @@ class FileManagerService {
   }
 
   async validateUserAccess(requestingUserId, targetUserId, isTeacher = false, classroomId = null) {
-    // Users can always access their own files
     if (requestingUserId === targetUserId) {
       return true;
     }
     
-    // Teachers can access all student files in their classroom
     if (isTeacher && classroomId) {
-      // In a real implementation, you would check if the target user is in the teacher's classroom
-      // For now, we'll allow teacher access if they provide a classroom ID
-      return true;
+      try {
+        const apiUrl = process.env.FRONTEND_API_URL || 'http://localhost:3000';
+        const response = await fetch(`${apiUrl}/api/classroom/validate-access`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            teacherId: requestingUserId,
+            studentId: targetUserId,
+            classroomId: classroomId
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          return data.hasAccess === true;
+        }
+        
+        console.error('Failed to validate classroom access:', response.status);
+        return false;
+      } catch (error) {
+        console.error('Error validating classroom access:', error.message);
+        return false;
+      }
     }
     
     return false;
@@ -49,7 +67,6 @@ class FileManagerService {
       await fs.access(userDir);
     } catch (error) {
       await fs.mkdir(userDir, { recursive: true });
-      // Create welcome files for new users
       await this.createWelcomeFiles(userDir);
     }
     return userDir;
@@ -57,7 +74,6 @@ class FileManagerService {
 
   async createWelcomeFiles(userDir) {
     try {
-      // Create a welcome README.md file
       const readmePath = path.join(userDir, 'README.md');
       const readmeContent = `# Welcome to CodiFY!
 
@@ -74,12 +90,11 @@ This is your personal file space where you can:
 3. Use the Monaco Editor for syntax highlighting and code completion
 4. Your files are automatically saved when you edit them
 
-Happy coding! 🚀
+Happy coding! 
 `;
       
       await fs.writeFile(readmePath, readmeContent, 'utf8');
 
-      // Create a sample Python file
       const pythonPath = path.join(userDir, 'hello.py');
       const pythonContent = `# Welcome to Python!
 # This is a sample Python file to get you started
@@ -103,7 +118,6 @@ if __name__ == "__main__":
       
       await fs.writeFile(pythonPath, pythonContent, 'utf8');
 
-      // Create a sample JavaScript file
       const jsPath = path.join(userDir, 'hello.js');
       const jsContent = `// Welcome to JavaScript!
 // This is a sample JavaScript file to get you started
@@ -133,20 +147,18 @@ console.log("Doubled numbers:", doubled);
       
       await fs.writeFile(jsPath, jsContent, 'utf8');
 
-      console.log(`📁 Created welcome files for new user in ${userDir}`);
+      console.log(`Created welcome files for new user in ${userDir}`);
     } catch (error) {
       console.error('Error creating welcome files:', error);
     }
   }
 
   validatePath(filePath) {
-    // Ensure path doesn't contain dangerous patterns
     const normalizedPath = path.normalize(filePath);
     if (normalizedPath.includes('..')) {
       throw new Error('Invalid file path');
     }
     
-    // Remove leading slash if present for relative path processing
     let cleanPath = normalizedPath;
     if (cleanPath.startsWith('/')) {
       cleanPath = cleanPath.substring(1);
@@ -164,7 +176,6 @@ console.log("Doubled numbers:", doubled);
       const safePath = this.validatePath(requestedPath === '/' ? '' : requestedPath);
       const fullPath = path.join(userDir, safePath);
 
-      // Ensure the path is within user directory
       if (!fullPath.startsWith(userDir)) {
         throw new Error('Access denied: Path outside user directory');
       }
@@ -184,7 +195,6 @@ console.log("Doubled numbers:", doubled);
           size = stats.size;
           modified = stats.mtime.toISOString();
         } catch (error) {
-          // Ignore stat errors for individual files
         }
 
         files.push({
@@ -199,7 +209,6 @@ console.log("Doubled numbers:", doubled);
       return {
         success: true,
         files: files.sort((a, b) => {
-          // Directories first, then files, both alphabetically
           if (a.type !== b.type) {
             return a.type === 'directory' ? -1 : 1;
           }
@@ -222,12 +231,10 @@ console.log("Doubled numbers:", doubled);
       const safePath = this.validatePath(filePath);
       const fullPath = path.join(userDir, safePath);
 
-      // Ensure the path is within user directory
       if (!fullPath.startsWith(userDir)) {
         throw new Error('Access denied: Path outside user directory');
       }
 
-      // Check if file exists before attempting to read
       try {
         await fs.access(fullPath);
       } catch (error) {
@@ -259,16 +266,13 @@ console.log("Doubled numbers:", doubled);
       const safePath = this.validatePath(filePath);
       const fullPath = path.join(userDir, safePath);
 
-      // Ensure the path is within user directory
       if (!fullPath.startsWith(userDir)) {
         throw new Error('Access denied: Path outside user directory');
       }
 
-      // Ensure parent directory exists
       const parentDir = path.dirname(fullPath);
       await fs.mkdir(parentDir, { recursive: true });
 
-      // Check if file already exists
       try {
         await fs.access(fullPath);
         return {
@@ -303,7 +307,6 @@ console.log("Doubled numbers:", doubled);
       const safePath = this.validatePath(filePath);
       const fullPath = path.join(userDir, safePath);
 
-      // Ensure the path is within user directory
       if (!fullPath.startsWith(userDir)) {
         throw new Error('Access denied: Path outside user directory');
       }
@@ -330,7 +333,6 @@ console.log("Doubled numbers:", doubled);
       const safePath = this.validatePath(filePath);
       const fullPath = path.join(userDir, safePath);
 
-      // Ensure the path is within user directory
       if (!fullPath.startsWith(userDir)) {
         throw new Error('Access denied: Path outside user directory');
       }
@@ -363,7 +365,6 @@ console.log("Doubled numbers:", doubled);
       const safePath = this.validatePath(dirPath);
       const fullPath = path.join(userDir, safePath);
 
-      // Ensure the path is within user directory
       if (!fullPath.startsWith(userDir)) {
         throw new Error('Access denied: Path outside user directory');
       }
@@ -390,19 +391,16 @@ console.log("Doubled numbers:", doubled);
       const safePath = this.validatePath(filePath);
       const fullPath = path.join(userDir, safePath);
 
-      // Ensure the path is within user directory
       if (!fullPath.startsWith(userDir)) {
         throw new Error('Access denied: Path outside user directory');
       }
 
-      // Check if file exists
       try {
         await fs.access(fullPath);
       } catch (error) {
         throw new Error(`File not found: ${filePath}`);
       }
 
-      // Read file as buffer for download
       const content = await fs.readFile(fullPath);
       const stats = await fs.stat(fullPath);
 

@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
-// GET - Get leaderboard for a specific classroom
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -17,7 +16,6 @@ export async function GET(
 
     const { id: classroomId } = await params;
 
-    // Get current user
     const currentUser = await prisma.user.findUnique({
       where: { email: session.user.email }
     });
@@ -26,7 +24,6 @@ export async function GET(
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Check if user has access to this classroom (teacher or enrolled student)
     const classroom = await prisma.classroom.findUnique({
       where: { id: classroomId },
       include: {
@@ -48,7 +45,6 @@ export async function GET(
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // Get all assignments for this classroom with submissions
     const assignments = await prisma.assignment.findMany({
       where: { classroomId },
       include: {
@@ -67,7 +63,6 @@ export async function GET(
       }
     });
 
-    // Calculate leaderboard statistics
     const studentStats = new Map();
     
     assignments.forEach(assignment => {
@@ -92,7 +87,6 @@ export async function GET(
       });
     });
 
-    // Convert to array and calculate averages
     const leaderboard = Array.from(studentStats.values()).map(stats => ({
       ...stats,
       averageScore: stats.totalScores.length > 0 

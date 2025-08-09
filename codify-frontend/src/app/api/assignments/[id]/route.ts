@@ -18,7 +18,6 @@ export async function GET(
 
     const { id: assignmentId } = await params;
 
-    // Get current user
     const currentUser = await prisma.user.findUnique({
       where: { email: session.user.email }
     });
@@ -27,7 +26,6 @@ export async function GET(
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Get assignment with classroom and teacher details
     const assignment = await prisma.assignment.findUnique({
       where: { id: assignmentId },
       include: {
@@ -49,17 +47,14 @@ export async function GET(
       return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
     }
 
-    // Check if user has access (either teacher or enrolled student)
     const isTeacher = assignment.teacherId === currentUser.id;
     let hasAccess = isTeacher;
 
     if (!isTeacher) {
-      // For students, don't allow access to revoked assignments
       if (!assignment.isActive || assignment.revokedAt) {
         return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
       }
 
-      // Check if user is enrolled in the classroom
       const enrollment = await prisma.enrollment.findFirst({
         where: {
           studentId: currentUser.id,

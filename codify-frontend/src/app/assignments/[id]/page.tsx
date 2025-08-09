@@ -110,7 +110,6 @@ export default function AssignmentPage() {
   const [notificationData, setNotificationData] = useState<NotificationData | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
 
-  // Helper function to show notification modals
   const showNotification = (type: 'success' | 'warning' | 'error' | 'info', title: string, message: string, icon?: React.ReactNode) => {
     setNotificationData({ type, title, message, icon });
     setShowNotificationModal(true);
@@ -119,7 +118,6 @@ export default function AssignmentPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch assignment details
         const assignmentResponse = await fetch(`/api/assignments/${assignmentId}`);
         if (!assignmentResponse.ok) {
           throw new Error('Failed to fetch assignment');
@@ -127,26 +125,22 @@ export default function AssignmentPage() {
         const assignmentData = await assignmentResponse.json();
         setAssignment(assignmentData.assignment);
 
-        // Check if current user is teacher
         const isCurrentUserTeacher = session?.user?.email === assignmentData.assignment.classroom.teacher.email;
         setIsTeacher(isCurrentUserTeacher);
 
         if (isCurrentUserTeacher) {
-          // Fetch all submissions for teacher view
           const submissionsResponse = await fetch(`/api/assignments/${assignmentId}/submissions`);
           if (submissionsResponse.ok) {
             const submissionsData = await submissionsResponse.json();
             setAllSubmissions(submissionsData.submissions);
           }
         } else {
-          // Fetch user's submission for student view
           const submissionResponse = await fetch(`/api/assignments/${assignmentId}/submission`);
           if (submissionResponse.ok) {
             const submissionData = await submissionResponse.json();
             setSubmission(submissionData.submission);
             setCode(submissionData.submission?.code || assignmentData.assignment.code);
             
-            // Count user's submissions for this assignment
             const countResponse = await fetch(`/api/assignments/${assignmentId}/submissions`);
             if (countResponse.ok) {
               const allSubmissionsData = await countResponse.json();
@@ -172,7 +166,6 @@ export default function AssignmentPage() {
     }
   }, [assignmentId, session?.user?.email, sessionStatus]);
 
-  // Check due date when assignment data is available
   useEffect(() => {
     if (assignment?.dueDate && new Date() > new Date(assignment.dueDate)) {
       setTimeout(() => {
@@ -181,7 +174,6 @@ export default function AssignmentPage() {
             'warning',
             'Assignment Past Due',
             `This assignment was due on ${new Date(assignment.dueDate!).toLocaleDateString()}. You may want to review submissions and consider revoking or extending the deadline.`,
-            <Calendar className="h-5 w-5" />
           );
         } else {
           showNotification(
@@ -203,13 +195,12 @@ export default function AssignmentPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           code
-        }),
+        })
       });
 
       const data = await response.json();
-      
       if (!response.ok) {
         showNotification('error', 'Submission Failed', data.error || 'Failed to submit assignment. Please try again.');
         return;
@@ -218,7 +209,6 @@ export default function AssignmentPage() {
       setSubmission(data.submission);
       setSubmissionCount(data.submissionCount || 0);
       
-      // Show success message with submission info
       const remainingSubmissions = 2 - (data.submissionCount || 0);
       let message = 'Your assignment has been submitted successfully!';
       if (remainingSubmissions > 0) {
@@ -260,7 +250,6 @@ export default function AssignmentPage() {
         throw new Error('Failed to grade submission');
       }
 
-      // Refresh submissions and leaderboard
       fetchAssignmentDetails();
       fetchLeaderboard();
       
@@ -293,7 +282,6 @@ export default function AssignmentPage() {
 
   const fetchAssignmentDetails = async () => {
     try {
-      // Fetch assignment details
       const assignmentResponse = await fetch(`/api/assignments/${assignmentId}`);
       if (!assignmentResponse.ok) {
         throw new Error('Failed to fetch assignment');
@@ -301,19 +289,16 @@ export default function AssignmentPage() {
       const assignmentData = await assignmentResponse.json();
       setAssignment(assignmentData.assignment);
 
-      // Check if current user is teacher
       const isCurrentUserTeacher = session?.user?.email === assignmentData.assignment.classroom.teacher.email;
       setIsTeacher(isCurrentUserTeacher);
 
       if (isCurrentUserTeacher) {
-        // Fetch all submissions for teacher view
         const submissionsResponse = await fetch(`/api/assignments/${assignmentId}/submissions`);
         if (submissionsResponse.ok) {
           const submissionsData = await submissionsResponse.json();
           setAllSubmissions(submissionsData.submissions);
         }
       } else {
-        // Fetch user's submission for student view
         const submissionResponse = await fetch(`/api/assignments/${assignmentId}/submission`);
         if (submissionResponse.ok) {
           const submissionData = await submissionResponse.json();
@@ -397,7 +382,6 @@ export default function AssignmentPage() {
       return;
     }
 
-    // Ensure we have a user ID for file operations
     if (!session?.user?.id) {
       showNotification('error', 'Authentication Error', 'User session not found. Please log in again.');
       return;
@@ -411,7 +395,7 @@ export default function AssignmentPage() {
           path: `/${filename}`,
           content: code,
           action: 'create',
-          userId: session.user.id, // Ensure file is created in user's directory
+          userId: session.user.id,
           requestingUserId: session.user.id,
           classroomId: assignment?.classroom?.id,
           isTeacher: isTeacher
@@ -467,7 +451,6 @@ export default function AssignmentPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-zinc-50 dark:from-zinc-950 dark:via-zinc-900 dark:to-purple-950 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
         <AssignmentHeader assignment={assignment} isTeacher={isTeacher} />
 
         {isTeacher ? (
@@ -483,7 +466,6 @@ export default function AssignmentPage() {
             revocationLoading={revocationLoading}
           />
         ) : (
-          // Student View
           <Tabs defaultValue="assignment" className="space-y-6">
             <TabsList className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-xl p-1">
               <TabsTrigger 
@@ -551,7 +533,6 @@ export default function AssignmentPage() {
           </Tabs>
         )}
 
-        {/* Modals */}
         <NotificationModal
           isOpen={showNotificationModal}
           onClose={() => setShowNotificationModal(false)}

@@ -3,8 +3,8 @@ import { v4 as uuidv4 } from 'uuid';
 class WebSocketService {
   constructor(wss) {
     this.wss = wss;
-    this.clients = new Map(); // Map of client IDs to WebSocket connections
-    this.subscriptions = new Map(); // Map of execution IDs to client IDs
+    this.clients = new Map(); 
+    this.subscriptions = new Map(); 
   }
 
   initialize() {
@@ -12,9 +12,7 @@ class WebSocketService {
       const clientId = uuidv4();
       const clientIp = request.socket.remoteAddress;
       
-      console.log(`🔌 WebSocket client connected: ${clientId} from ${clientIp}`);
       
-      // Store client connection
       this.clients.set(clientId, {
         ws,
         clientId,
@@ -23,7 +21,6 @@ class WebSocketService {
         subscriptions: new Set()
       });
 
-      // Send welcome message
       this.sendToClient(clientId, {
         type: 'connection',
         status: 'connected',
@@ -31,7 +28,6 @@ class WebSocketService {
         timestamp: new Date().toISOString()
       });
 
-      // Handle incoming messages
       ws.on('message', (data) => {
         try {
           const message = JSON.parse(data.toString());
@@ -46,30 +42,22 @@ class WebSocketService {
         }
       });
 
-      // Handle client disconnect
       ws.on('close', () => {
-        console.log(`🔌 WebSocket client disconnected: ${clientId}`);
         this.handleClientDisconnect(clientId);
       });
 
-      // Handle WebSocket errors
       ws.on('error', (error) => {
         console.error(`❌ WebSocket error for client ${clientId}:`, error);
         this.handleClientDisconnect(clientId);
       });
     });
 
-    console.log('🔌 WebSocket server initialized');
   }
 
-  /**
-   * Handle incoming messages from clients
-   */
   handleClientMessage(clientId, message) {
     const client = this.clients.get(clientId);
     if (!client) return;
 
-    console.log(`📨 Message from ${clientId}:`, message.type);
 
     switch (message.type) {
       case 'subscribe':
@@ -96,9 +84,7 @@ class WebSocketService {
     }
   }
 
-  /**
-   * Handle execution subscription
-   */
+
   handleSubscription(clientId, message) {
     const { executionId } = message;
     
@@ -114,16 +100,13 @@ class WebSocketService {
     const client = this.clients.get(clientId);
     if (!client) return;
 
-    // Add subscription
     client.subscriptions.add(executionId);
     
-    // Track subscription globally
     if (!this.subscriptions.has(executionId)) {
       this.subscriptions.set(executionId, new Set());
     }
     this.subscriptions.get(executionId).add(clientId);
 
-    console.log(`📡 Client ${clientId} subscribed to execution ${executionId}`);
 
     this.sendToClient(clientId, {
       type: 'subscribed',
@@ -132,9 +115,7 @@ class WebSocketService {
     });
   }
 
-  /**
-   * Handle execution unsubscription
-   */
+ 
   handleUnsubscription(clientId, message) {
     const { executionId } = message;
     
@@ -150,10 +131,8 @@ class WebSocketService {
     const client = this.clients.get(clientId);
     if (!client) return;
 
-    // Remove subscription
     client.subscriptions.delete(executionId);
     
-    // Remove from global tracking
     const subscribers = this.subscriptions.get(executionId);
     if (subscribers) {
       subscribers.delete(clientId);
@@ -162,7 +141,6 @@ class WebSocketService {
       }
     }
 
-    console.log(`📡 Client ${clientId} unsubscribed from execution ${executionId}`);
 
     this.sendToClient(clientId, {
       type: 'unsubscribed',
@@ -171,14 +149,10 @@ class WebSocketService {
     });
   }
 
-  /**
-   * Handle client disconnect
-   */
   handleClientDisconnect(clientId) {
     const client = this.clients.get(clientId);
     if (!client) return;
 
-    // Clean up all subscriptions for this client
     for (const executionId of client.subscriptions) {
       const subscribers = this.subscriptions.get(executionId);
       if (subscribers) {
@@ -189,13 +163,10 @@ class WebSocketService {
       }
     }
 
-    // Remove client
     this.clients.delete(clientId);
   }
 
-  /**
-   * Send message to specific client
-   */
+ 
   sendToClient(clientId, message) {
     const client = this.clients.get(clientId);
     if (!client || client.ws.readyState !== client.ws.OPEN) {
@@ -206,15 +177,13 @@ class WebSocketService {
       client.ws.send(JSON.stringify(message));
       return true;
     } catch (error) {
-      console.error(`❌ Failed to send message to client ${clientId}:`, error);
+      console.error(`Failed to send message to client ${clientId}:`, error);
       this.handleClientDisconnect(clientId);
       return false;
     }
   }
 
-  /**
-   * Broadcast execution update to all subscribers
-   */
+
   broadcastExecutionUpdate(executionId, update) {
     const subscribers = this.subscriptions.get(executionId);
     if (!subscribers || subscribers.size === 0) {
@@ -239,42 +208,33 @@ class WebSocketService {
       }
     }
 
-    console.log(`📡 Broadcasted execution update for ${executionId} to ${successCount} clients (${failCount} failed)`);
   }
 
-  /**
-   * Broadcast execution completion
-   */
+
   broadcastExecutionComplete(executionId, result) {
     this.broadcastExecutionUpdate(executionId, {
       status: 'completed',
       result
     });
 
-    // Clean up subscriptions for completed execution after a delay
     setTimeout(() => {
       this.subscriptions.delete(executionId);
-    }, 30000); // 30 seconds delay
+    }, 30000); 
   }
 
-  /**
-   * Broadcast execution error
-   */
+
   broadcastExecutionError(executionId, error) {
     this.broadcastExecutionUpdate(executionId, {
       status: 'error',
       error: error.message || error
     });
 
-    // Clean up subscriptions for failed execution after a delay
     setTimeout(() => {
       this.subscriptions.delete(executionId);
-    }, 30000); // 30 seconds delay
+    }, 30000); 
   }
 
-  /**
-   * Get service statistics
-   */
+
   getStats() {
     return {
       connectedClients: this.clients.size,
@@ -284,9 +244,7 @@ class WebSocketService {
     };
   }
 
-  /**
-   * Broadcast to all connected clients
-   */
+
   broadcast(message) {
     let successCount = 0;
     let failCount = 0;
@@ -299,7 +257,6 @@ class WebSocketService {
       }
     }
 
-    console.log(`📡 Broadcasted message to ${successCount} clients (${failCount} failed)`);
   }
 }
 

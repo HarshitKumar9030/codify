@@ -23,7 +23,6 @@ export async function POST(
       }, { status: 400 });
     }
 
-    // Get current user
     const currentUser = await prisma.user.findUnique({
       where: { email: session.user.email }
     });
@@ -32,7 +31,6 @@ export async function POST(
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Verify assignment exists and user is the teacher
     const assignment = await prisma.assignment.findUnique({
       where: { id: assignmentId }
     });
@@ -45,7 +43,6 @@ export async function POST(
       return NextResponse.json({ error: 'Access denied - teacher only' }, { status: 403 });
     }
 
-    // Verify submission exists and belongs to this assignment
     const submission = await prisma.submission.findUnique({
       where: { id: submissionId }
     });
@@ -54,24 +51,20 @@ export async function POST(
       return NextResponse.json({ error: 'Submission not found' }, { status: 404 });
     }
 
-    // Validate status
     const validStatuses = ['PENDING', 'ACCEPTED', 'REJECTED', 'NEEDS_REVIEW'];
     if (!validStatuses.includes(status)) {
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
     }
 
-    // Calculate final score considering late penalty
     let finalScore = score;
     let originalScore = score;
     
     if (score !== undefined && score !== null && submission.isLate && submission.latePenalty && submission.latePenalty > 0) {
-      // Apply late penalty to the score
       const penaltyDeduction = (score * submission.latePenalty) / 100;
       finalScore = Math.max(0, score - penaltyDeduction);
       originalScore = score; // Store original score before penalty
     }
 
-    // Update submission with grade
     const updatedSubmission = await prisma.submission.update({
       where: { id: submissionId },
       data: {
@@ -83,9 +76,7 @@ export async function POST(
       }
     });
 
-    // Create notifications for both student and teacher
     try {
-      // Notification for the student
       await prisma.notification.create({
         data: {
           userId: submission.studentId,
@@ -102,7 +93,6 @@ export async function POST(
         }
       });
 
-      // Notification for the teacher (completion confirmation)
       await prisma.notification.create({
         data: {
           userId: currentUser.id,

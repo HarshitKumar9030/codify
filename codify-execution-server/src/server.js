@@ -7,19 +7,15 @@ import { RateLimiterMemory } from 'rate-limiter-flexible';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
-// Import routes
 import codeExecutionRoutes from './routes/codeExecution.js';
 import healthRoutes from './routes/health.js';
 import fileManagerRoutes from './routes/fileManager.js';
 
-// Import middleware
 import errorHandler from './middleware/errorHandler.js';
 import requestLogger from './middleware/requestLogger.js';
 
-// Import services
 import WebSocketExecutionServer from './services/websocketExecutor.js';
 
-// Load environment variables
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -53,7 +49,6 @@ app.use(helmet({
   },
 }));
 
-// CORS configuration
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true,
@@ -61,17 +56,13 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Request logging
 app.use(requestLogger);
 
-// Rate limiting middleware
 app.use(async (req, res, next) => {
   try {
-    // Use different rate limiter for file operations
     const limiter = req.path.startsWith('/api/files') ? fileRateLimiter : rateLimiter;
     await limiter.consume(req.ip);
     next();
@@ -85,7 +76,6 @@ app.use(async (req, res, next) => {
   }
 });
 
-// Routes
 app.use('/api/health', healthRoutes);
 app.use('/api/execute', codeExecutionRoutes);
 app.use('/api/files', fileManagerRoutes);
@@ -109,26 +99,25 @@ const PORT = process.env.PORT || 8080;
 const HOST = process.env.HOST || '0.0.0.0';
 
 server.listen(PORT, HOST, () => {
-  console.log(`🚀 CodiFY Execution Server running on ${HOST}:${PORT}`);
-  console.log(`📁 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔒 Security: Helmet enabled`);
-  console.log(`🌐 CORS: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
-  console.log(`⚡ WebSocket: Enabled`);
+  console.log(`CodiFY Execution Server running on ${HOST}:${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`Security: Helmet enabled`);
+  console.log(`CORS: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
+  console.log(`WebSocket: Enabled`);
 });
 
-// Graceful shutdown
 process.on('SIGTERM', () => {
-  console.log('🛑 SIGTERM received, shutting down gracefully...');
+  console.log('SIGTERM received, shutting down gracefully...');
   server.close(() => {
-    console.log('✅ Process terminated');
+    console.log('Process terminated');
     process.exit(0);
   });
 });
 
 process.on('SIGINT', () => {
-  console.log('🛑 SIGINT received, shutting down gracefully...');
+  console.log('SIGINT received, shutting down gracefully...');
   server.close(() => {
-    console.log('✅ Process terminated');
+    console.log('Process terminated');
     process.exit(0);
   });
 });

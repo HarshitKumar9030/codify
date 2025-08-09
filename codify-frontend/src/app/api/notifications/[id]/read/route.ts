@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
-// PATCH /api/notifications/[id]/read - Mark specific notification as read
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -23,7 +22,6 @@ export async function PATCH(
       }, { status: 400 });
     }
 
-    // Get current user
     const currentUser = await prisma.user.findUnique({
       where: { email: session.user.email },
       select: { id: true }
@@ -33,7 +31,6 @@ export async function PATCH(
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Check if notification exists and belongs to the user
     const notification = await prisma.notification.findFirst({
       where: {
         id: notificationId,
@@ -47,7 +44,6 @@ export async function PATCH(
       }, { status: 404 });
     }
 
-    // Update notification as read
     const updatedNotification = await prisma.notification.update({
       where: { 
         id: notificationId,

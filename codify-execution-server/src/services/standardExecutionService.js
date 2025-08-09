@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { tmpdir } from 'os';
 import fs from 'fs';
 
-class FastSecureExecutionService {
+class standardExecutionService {
   constructor() {
     this.executions = new Map();
     this.runningExecutions = new Map();
@@ -17,27 +17,21 @@ class FastSecureExecutionService {
     this.maxOutputSize = 256 * 1024; // 256KB max output
     this.maxMemoryMB = 64; // 64MB memory limit (reduced for speed)
     
-    // Simplified blocked patterns for faster validation - more targeted
     this.blockedPatterns = [
-      // Critical system access only - be more specific
       /import\s+subprocess|from\s+subprocess\s+import/i,
       /import\s+socket|from\s+socket\s+import/i,
       
-      // Node.js critical modules - be more specific about dangerous usage
       /require\s*\(\s*['"`]child_process['"`]\s*\)/i,
       
-      // Direct system calls with actual commands - be more specific
       /os\.system\s*\(.*['"]/i,
       /subprocess\.(run|call|check_output|popen)/i,
       /spawn\s*\(.*['"]/i,
       /popen\s*\(.*['"]/i,
       /shell=True/i,
       
-      // Absolute file system access (only very obvious dangerous patterns)
       /open\s*\(\s*['"`]\/bin\/|open\s*\(\s*['"`]\/sbin\/|open\s*\(\s*['"`]\/dev\//i,
       /with\s+open\s*\(\s*['"`]\/bin\/|with\s+open\s*\(\s*['"`]\/sbin\/|with\s+open\s*\(\s*['"`]\/dev\//i,
       
-      // Process control
       /exit\s*\(\)|quit\s*\(\)/i,
       /kill\s*\(|terminate\s*\(/i,
     ];
@@ -55,30 +49,24 @@ class FastSecureExecutionService {
     for (const pattern of this.blockedPatterns) {
       if (pattern.test(code)) {
         criticalViolations.push('Blocked system access detected');
-        break; // Stop at first violation for speed
+        break; 
       }
     }
     
     return criticalViolations;
   }
 
-  /**
-   * Fast secure execution without Docker
-   */
   async executeCode({ executionId, code, language, input = '', timeout = 10, userId, clientIp }) {
-    console.log(`🔥 executeCode called with userId: ${userId}, executionId: ${executionId}`);
+    console.log(`executeCode called with userId: ${userId}, executionId: ${executionId}`);
     
     try {
-      // Fast validation
       const validationErrors = this.validateCodeFast(code);
       if (validationErrors.length > 0) {
         throw new Error(`Security check failed: ${validationErrors[0]}`);
       }
 
-      // Limit timeout for speed
       timeout = Math.min(timeout, this.maxExecutionTime);
 
-      // Check concurrent execution limit
       if (this.runningExecutions.size >= this.maxConcurrentExecutions) {
         throw new Error('Server busy - please retry in a moment');
       }
@@ -97,7 +85,6 @@ class FastSecureExecutionService {
 
       this.executions.set(executionId, result);
 
-      // Fast execution in isolated process
       const executionResult = await this.executeInIsolatedProcess({ 
         code, 
         language, 
@@ -113,7 +100,6 @@ class FastSecureExecutionService {
         executionTime: Date.now() - result.startTime
       });
 
-      console.log(`Execution ${executionId} completed in ${result.executionTime}ms`);
       return result;
 
     } catch (error) {
@@ -135,18 +121,15 @@ class FastSecureExecutionService {
 
 
   async executeInIsolatedProcess({ code, language, input, timeout, executionId, userId }) {
-    // Use in-memory temp directory for speed
     const tempDir = join(tmpdir(), 'codify-fast', executionId);
     await mkdir(tempDir, { recursive: true });
 
-    // Set up user file access if userId is provided
-    console.log(`🔍 CHECKING USER FILE ACCESS: userId=${userId}, tempDir=${tempDir}`);
+    console.log(`CHECKING USER FILE ACCESS: userId=${userId}, tempDir=${tempDir}`);
     if (userId) {
-      console.log(`🚀 CALLING setupUserFileAccess for user ${userId}`);
+      console.log(`CALLING setupUserFileAccess for user ${userId}`);
       await this.setupUserFileAccess(tempDir, userId);
-      console.log(`✅ COMPLETED setupUserFileAccess for user ${userId}`);
     } else {
-      console.log(`❌ NO userId provided - skipping file access setup`);
+      console.log(`NO userId provided - skipping file access setup`);
     }
 
     try {
@@ -154,12 +137,11 @@ class FastSecureExecutionService {
 
       if (language === 'python') {
         filePath = join(tempDir, 'main.py');
-        // Minimal Python wrapper for speed
         const secureCode = this.wrapPythonCodeFast(code);
         await writeFile(filePath, secureCode, 'utf8');
         
         command = process.platform === 'win32' ? 'python' : 'python3';
-        args = ['-u', '-S', filePath]; // -u: unbuffered, -S: no site packages
+        args = ['-u', '-S', filePath];
       } else if (language === 'javascript') {
         filePath = join(tempDir, 'main.js');
         const secureCode = this.wrapNodeCodeFast(code);
@@ -434,7 +416,6 @@ try {
       let error = '';
       let killed = false;
 
-      // Minimal environment for speed
       const fastEnv = {
         PATH: process.env.PATH,
         HOME: tempDir,
@@ -451,12 +432,11 @@ try {
         stdio: ['pipe', 'pipe', 'pipe'],
         timeout: timeout * 1000,
         detached: false,
-        windowsHide: true // Hide window on Windows for speed
+        windowsHide: true 
       });
 
       this.runningExecutions.set(executionId, child);
 
-      // Fast timeout handler
       const timeoutHandle = setTimeout(() => {
         if (!killed) {
           killed = true;
@@ -465,7 +445,6 @@ try {
         }
       }, timeout * 1000);
 
-      // Fast output handling with size limits
       child.stdout.on('data', (data) => {
         output += data.toString();
         if (output.length > this.maxOutputSize) {
@@ -509,7 +488,6 @@ try {
         }
       });
 
-      // Send input quickly
       if (input) {
         child.stdin.write(input);
       }
@@ -517,22 +495,16 @@ try {
     });
   }
 
-  /**
-   * Async cleanup - don't block execution
-   */
   async cleanupAsync(tempDir) {
-    // Use setTimeout to make cleanup non-blocking
     setTimeout(async () => {
       try {
         const { rm } = await import('fs/promises');
         await rm(tempDir, { recursive: true, force: true });
       } catch (error) {
-        // Ignore cleanup errors for speed
       }
     }, 100);
   }
 
-  // Standard methods for compatibility
   async getExecutionResult(executionId) {
     return this.executions.get(executionId) || null;
   }
@@ -586,9 +558,7 @@ try {
     };
   }
 
-  /**
-   * Execute a file from user's file system
-   */
+
   async executeFile({ executionId, userId, filePath, input = '', timeout = 10, clientIp }) {
     try {
       const { default: FileManagerService } = await import('./fileManagerService.js');
@@ -622,70 +592,52 @@ try {
         clientIp
       });
     } catch (error) {
-      console.error(`❌ File execution ${executionId} failed:`, error.message);
+      console.error(`File execution ${executionId} failed:`, error.message);
       throw error;
     }
   }
 
   async setupUserFileAccess(tempDir, userId) {
-    console.log(`🚀🚀🚀 setupUserFileAccess START: userId=${userId}, tempDir=${tempDir}`);
+    console.log(`setupUserFileAccess START: userId=${userId}, tempDir=${tempDir}`);
     
     try {
-      console.log(`Setting up file access for user ${userId} in temp dir ${tempDir}`);
       
-      // Get the user's file directory
       const userDir = join(process.cwd(), 'user-files', `user_${userId}`);
-      console.log(`Looking for user directory: ${userDir}`);
       
-      // Check if user directory exists
       if (!fs.existsSync(userDir)) {
-        console.log(`❌ User directory does not exist: ${userDir}`);
         return;
       }
       
-      console.log(`✅ User directory exists: ${userDir}`);
       
-      // Get all files in the user directory - using SYNC operations like working WebSocket version
       const userFiles = fs.readdirSync(userDir, { withFileTypes: true });
-      console.log(`📁 Found ${userFiles.length} files/folders in user directory:`, userFiles.map(f => f.name));
+      console.log(`Found ${userFiles.length} files/folders in user directory:`, userFiles.map(f => f.name));
       
       for (const file of userFiles) {
         const userFilePath = join(userDir, file.name);
         const tempFilePath = join(tempDir, file.name);
         
-        console.log(`📋 Processing: ${file.name}, isDirectory: ${file.isDirectory()}`);
         
         try {
           if (file.isDirectory()) {
-            // For directories, copy recursively using sync operations
-            console.log(`📂 Copying directory: ${file.name} from ${userFilePath} to ${tempFilePath}`);
             fs.cpSync(userFilePath, tempFilePath, { recursive: true });
-            console.log(`✅ Directory copied successfully: ${file.name}`);
           } else {
-            // For files, copy to temp directory using sync operations
-            console.log(`📄 Copying file: ${file.name} from ${userFilePath} to ${tempFilePath}`);
             fs.copyFileSync(userFilePath, tempFilePath);
-            console.log(`✅ File copied successfully: ${file.name}`);
           }
         } catch (fileError) {
           console.error(`❌ Error copying ${file.name}:`, fileError);
-          throw fileError; // Re-throw to see in main catch
+          throw fileError; 
         }
       }
       
-      console.log(`🎉 Successfully set up file access for user ${userId} in ${tempDir}`);
       
-      // List what's now available in temp dir - using sync operations
       const tempFiles = fs.readdirSync(tempDir);
-      console.log(`📋 Files now available in temp directory:`, tempFiles);
       
-      console.log(`🚀🚀🚀 setupUserFileAccess COMPLETE: userId=${userId}`);
       
     } catch (error) {
-      console.error('💥💥💥 CRITICAL ERROR in setupUserFileAccess:', error);
-      throw error; // Re-throw to see if this is causing silent failures
+      console.error('CRITICAL ERROR in setupUserFileAccess:', error);
+      throw error; 
     }
   }
 }
 
-export default FastSecureExecutionService;
+export default standardExecutionService;

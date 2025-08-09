@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-// POST /api/classrooms/join - Join a classroom with 8-digit code
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -31,7 +30,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find classroom by code
     const classroom = await prisma.classroom.findUnique({
       where: { code: code.toUpperCase() },
       include: {
@@ -57,7 +55,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if student is already enrolled
     if (classroom.enrollments.length > 0) {
       return NextResponse.json(
         { 
@@ -74,7 +71,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Add student to classroom via Enrollment
     await prisma.enrollment.create({
       data: {
         studentId: session.user.id,
@@ -82,7 +78,6 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // Get updated classroom with counts
     const updatedClassroom = await prisma.classroom.findUnique({
       where: { id: classroom.id },
       include: {

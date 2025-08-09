@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-// GET /api/chat - Get messages for a classroom
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -27,7 +26,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Check if user is enrolled in the classroom
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
       include: {
@@ -47,7 +45,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get messages with pagination
     const messages = await prisma.chatMessage.findMany({
       where: { classroomId },
       include: {
@@ -88,13 +85,11 @@ export async function GET(request: NextRequest) {
       take: limit
     });
 
-    // Mark messages as read
     const unreadMessageIds = messages
       .filter((msg) => msg.readBy.length === 0 && msg.senderId !== session.user.id)
       .map((msg) => msg.id);
 
     if (unreadMessageIds.length > 0) {
-      // Check for existing read records to avoid duplicates
       const existingReads = await prisma.messageRead.findMany({
         where: {
           userId: session.user.id,
@@ -131,7 +126,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/chat - Send a message
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -159,7 +153,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user is enrolled in the classroom
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
       include: {
@@ -179,7 +172,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create the message
     const message = await prisma.chatMessage.create({
       data: {
         content,
@@ -221,7 +213,6 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // Mark as read by sender
     await prisma.messageRead.create({
       data: {
         messageId: message.id,
@@ -243,7 +234,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// DELETE /api/chat - Delete a message
 export async function DELETE(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -265,7 +255,6 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Check if user owns the message or is a teacher
     const message = await prisma.chatMessage.findUnique({
       where: { id: messageId },
       include: {
@@ -291,7 +280,6 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Delete the message
     await prisma.chatMessage.delete({
       where: { id: messageId }
     });

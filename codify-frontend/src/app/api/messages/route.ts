@@ -6,12 +6,11 @@ import { prisma } from '@/lib/prisma';
 interface MessageData {
   senderId?: string;
   senderName?: string;
-  classroomId?: string;
+  classroomId?: string | null;
   fullMessage?: string;
   type?: string;
 }
 
-// POST - Send a direct message to a teacher
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -28,7 +27,6 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Get current user
     const currentUser = await prisma.user.findUnique({
       where: { email: session.user.email },
       select: { id: true, name: true, role: true }
@@ -38,7 +36,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Get recipient user
     const recipient = await prisma.user.findUnique({
       where: { id: recipientId },
       select: { id: true, name: true, role: true }
@@ -48,7 +45,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Recipient not found' }, { status: 404 });
     }
 
-    // Verify classroom relationship if classroomId is provided
     if (classroomId) {
       const classroom = await prisma.classroom.findUnique({
         where: { id: classroomId },
@@ -63,7 +59,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Classroom not found' }, { status: 404 });
       }
 
-      // Check if user has access to this classroom
       const hasAccess = 
         classroom.teacherId === currentUser.id || // User is the teacher
         classroom.enrollments.length > 0 || // User is enrolled as student
@@ -76,7 +71,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create notification for the recipient
     await prisma.notification.create({
       data: {
         userId: recipientId,
@@ -106,7 +100,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET - Get direct messages (conversations)
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -118,7 +111,6 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const recipientId = searchParams.get('recipientId');
 
-    // Get current user
     const currentUser = await prisma.user.findUnique({
       where: { email: session.user.email },
       select: { id: true, name: true, role: true }
@@ -128,7 +120,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Get direct message notifications
     const messages = await prisma.notification.findMany({
       where: {
         userId: currentUser.id,
@@ -147,7 +138,6 @@ export async function GET(request: NextRequest) {
       take: 50
     });
 
-    // Parse and format messages
     const formattedMessages = messages.map(notification => {
       let parsedData: MessageData = {};
       try {

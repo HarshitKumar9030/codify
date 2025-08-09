@@ -5,7 +5,6 @@ import { authOptions } from '@/lib/auth';
 
 const prisma = new PrismaClient();
 
-// GET - Get all submissions for an assignment (teacher only)
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -19,7 +18,6 @@ export async function GET(
 
     const { id: assignmentId } = await params;
 
-    // Get current user
     const currentUser = await prisma.user.findUnique({
       where: { email: session.user.email }
     });
@@ -28,7 +26,6 @@ export async function GET(
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Verify assignment exists and user is the teacher
     const assignment = await prisma.assignment.findUnique({
       where: { id: assignmentId }
     });
@@ -41,7 +38,6 @@ export async function GET(
       return NextResponse.json({ error: 'Access denied - teacher only' }, { status: 403 });
     }
 
-    // Get all submissions for this assignment
     const submissions = await prisma.submission.findMany({
       where: { assignmentId },
       include: {

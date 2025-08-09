@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-// GET /api/notifications - Get user's notifications
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -53,7 +52,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// PATCH /api/notifications - Mark notifications as read
 export async function PATCH(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -68,7 +66,6 @@ export async function PATCH(request: NextRequest) {
     const { notificationIds, markAllAsRead } = await request.json();
 
     if (markAllAsRead) {
-      // Mark all notifications as read for the user
       await prisma.notification.updateMany({
         where: {
           userId: session.user.id,
@@ -79,7 +76,6 @@ export async function PATCH(request: NextRequest) {
         }
       });
     } else if (notificationIds && Array.isArray(notificationIds)) {
-      // Mark specific notifications as read
       await prisma.notification.updateMany({
         where: {
           id: { in: notificationIds },
@@ -110,7 +106,6 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
-// POST /api/notifications - Create a new notification (teacher to student)
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -132,7 +127,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get current user (sender)
     const sender = await prisma.user.findUnique({
       where: { id: session.user.id }
     });
@@ -141,7 +135,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Sender not found' }, { status: 404 });
     }
 
-    // Verify sender is a teacher and has access to the classroom
     if (classroomId) {
       const classroom = await prisma.classroom.findFirst({
         where: {
@@ -157,7 +150,6 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Verify recipient is enrolled in the classroom
       const enrollment = await prisma.enrollment.findFirst({
         where: {
           studentId: recipientId,
@@ -173,7 +165,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create the notification
     const notification = await prisma.notification.create({
       data: {
         userId: recipientId,

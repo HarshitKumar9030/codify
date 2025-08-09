@@ -4,13 +4,13 @@ import CodePreview from "../ui/CodePreview";
 
 export default function HeroSection() {
   return (
-    <section className="relative pt-24 pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-white to-zinc-50/50 dark:from-zinc-950 dark:to-zinc-900/50">
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-200/30 dark:bg-purple-900/20 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-200/30 dark:bg-blue-900/20 rounded-full blur-3xl"></div>
+    <section className="relative px-4 pt-24 pb-20 sm:px-6 lg:px-8 bg-gradient-to-b from-white to-zinc-50/50 dark:from-zinc-950 dark:to-zinc-900/50">
+      <div aria-hidden className="absolute inset-0 overflow-hidden">
+        <div className="absolute -right-40 -top-40 h-80 w-80 rounded-full bg-purple-200/30 blur-3xl dark:bg-purple-900/20" />
+        <div className="absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-blue-200/30 blur-3xl dark:bg-blue-900/20" />
       </div>
 
-      <div className="relative max-w-7xl mx-auto">
+      <div className="relative mx-auto max-w-7xl">
         <div className="text-center">
            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-sm font-medium mb-8">
             <Sparkles className="w-4 h-4" />
@@ -25,13 +25,11 @@ export default function HeroSection() {
             </span>
           </h1>
 
-          {/* Subheading */}
           <p className="max-w-3xl mx-auto text-lg sm:text-xl text-zinc-600 dark:text-zinc-400 mb-8 leading-relaxed">
             The comprehensive platform where educators and students come together to master programming.
             Build, test, and submit code assignments with real-time execution and instant feedback.
           </p>
 
-          {/* Stats */}
           <div className="flex flex-wrap justify-center gap-6 mb-12 text-sm text-zinc-600 dark:text-zinc-400">
             <div className="flex items-center gap-2">
               <Code className="w-4 h-4 text-purple-600" />
@@ -47,7 +45,6 @@ export default function HeroSection() {
             </div>
           </div>
 
-          {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
             <Link 
               href="/register?role=teacher" 
@@ -65,7 +62,6 @@ export default function HeroSection() {
             </Link>
           </div>
 
-          {/* Code Preview */}
           <div className="max-w-4xl mx-auto">
             <CodePreview />
           </div>

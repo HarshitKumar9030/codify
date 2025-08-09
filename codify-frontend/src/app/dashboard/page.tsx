@@ -73,20 +73,16 @@ export default function Dashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
   
-  // Core state
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("classrooms");
   
-  // Classroom management state
   const [createLoading, setCreateLoading] = useState(false);
   const [joinLoading, setJoinLoading] = useState(false);
 
-  // Assignment creation state
   const [createAssignmentOpen, setCreateAssignmentOpen] = useState(false);
 
-  // Leaderboard state
   const [leaderboardData, setLeaderboardData] = useState<Array<{
     classroomId: string;
     classroomName: string;
@@ -160,7 +156,6 @@ export default function Dashboard() {
     }
   }, []);
 
-  // Handler functions
   const handleCreateClassroom = async (classroom: { name: string; description: string }) => {
     setCreateLoading(true);
     try {
@@ -230,7 +225,7 @@ export default function Dashboard() {
     }
   };
 
-  // Effects
+  // 
   useEffect(() => {
     if (status === "loading") return;
     if (!session) {
@@ -238,26 +233,18 @@ export default function Dashboard() {
       return;
     }
     
-    // Check if onboarding is completed - be explicit about the check
-    console.log('Dashboard: Checking onboarding status:', {
-      user: session.user,
-      onboardingCompleted: session.user?.onboardingCompleted
-    });
-    
+
     if (session.user && session.user.onboardingCompleted !== true) {
-      console.log('Dashboard: Redirecting to onboarding');
       router.push("/onboarding");
       return;
     }
     
-    console.log('Dashboard: Onboarding completed, loading dashboard data');
     fetchClassrooms();
     fetchAssignments();
     fetchNotifications();
     fetchLeaderboard();
   }, [session, status, router, fetchLeaderboard]);
 
-  // Loading state
   if (status === "loading" || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -266,7 +253,6 @@ export default function Dashboard() {
     );
   }
 
-  // Unauthorized state
   if (!session) {
     return null;
   }
@@ -275,11 +261,9 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-zinc-50 dark:from-zinc-950 dark:via-zinc-900 dark:to-purple-950">
-      {/* Improved Mobile-First Header */}
       <header className="border-b border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-sm sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-14 sm:h-16">
-            {/* Left side - Logo and Badge */}
             <div className="flex items-center space-x-2 sm:space-x-3">
               <div className="flex items-center space-x-2">
                 <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-r from-purple-600 to-zinc-600 rounded-lg flex items-center justify-center">
@@ -294,9 +278,7 @@ export default function Dashboard() {
               </Badge>
             </div>
             
-            {/* Right side - User info and actions */}
             <div className="flex items-center space-x-1 sm:space-x-2">
-              {/* Welcome text - responsive */}
               <span className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 font-medium hidden md:block">
                 Welcome, {session.user?.name || "User"}
               </span>
@@ -304,7 +286,6 @@ export default function Dashboard() {
                 {session.user?.name?.split(' ')[0] || "User"}
               </span>
               
-              {/* Notifications - improved mobile */}
               <div className="relative">
                 <Button
                   variant="ghost"
@@ -386,10 +367,8 @@ export default function Dashboard() {
                 )}
               </div>
               
-              {/* Theme Toggle */}
               <ThemeToggle />
               
-              {/* Logout */}
               <Button
                 variant="ghost"
                 size="sm"
@@ -403,13 +382,10 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3 sm:space-y-4">
-          {/* Improved Dashboard Tabs with better mobile support */}
           <DashboardTabs isTeacher={isTeacher} />
 
-          {/* Tab Contents */}
           <TabsContent value="classrooms">
             <ClassroomsTab
               classrooms={classrooms.map(c => ({ ...c, isTeacher: c.isTeacher || false }))}
@@ -460,7 +436,6 @@ export default function Dashboard() {
         </Tabs>
       </main>
 
-      {/* Assignment Creation Dialog */}
       {createAssignmentOpen && (
         <AssignmentCreationForm
           open={createAssignmentOpen}

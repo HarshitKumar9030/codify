@@ -21,7 +21,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find user with valid reset token
     const user = await prisma.user.findFirst({
       where: {
         resetToken: token,
@@ -34,18 +33,13 @@ export async function POST(request: NextRequest) {
         email: true,
       }
     });
-
     if (!user) {
       return NextResponse.json(
         { error: "Invalid or expired reset token" },
         { status: 400 }
       );
     }
-
-    // Hash new password
     const hashedPassword = await bcrypt.hash(password, 12);
-
-    // Update user password and clear reset token
     await prisma.user.update({
       where: { id: user.id },
       data: {
@@ -54,11 +48,9 @@ export async function POST(request: NextRequest) {
         resetTokenExpiry: null,
       }
     });
-
     return NextResponse.json({
       message: "Password reset successfully"
     });
-
   } catch (error) {
     console.error("Reset password error:", error);
     return NextResponse.json(

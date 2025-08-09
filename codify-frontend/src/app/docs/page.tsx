@@ -289,10 +289,8 @@ export default function DocsPage() {
             </div>
           </div>
 
-          {/* User Guides */}
           <div id="students" className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16">
             
-            {/* For Students */}
             <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-gray-200 dark:border-zinc-700 overflow-hidden shadow-sm">
               <div className="p-8">
                 <div className="flex items-center gap-3 mb-8">
@@ -387,7 +385,6 @@ export default function DocsPage() {
               </div>
             </div>
 
-            {/* For Teachers */}
             <div id="teachers" className="bg-white dark:bg-zinc-900 rounded-3xl border border-gray-200 dark:border-zinc-700 overflow-hidden shadow-sm">
               <div className="p-8">
                 <div className="flex items-center gap-3 mb-8">
@@ -483,7 +480,6 @@ export default function DocsPage() {
             </div>
           </div>
 
-          {/* Features Grid */}
           <div id="features" className="mb-16">
             <div className="text-center mb-12">
               <h2 className="text-3xl font-semibold text-gray-900 dark:text-white mb-4">
@@ -557,7 +553,6 @@ export default function DocsPage() {
             </div>
           </div>
 
-          {/* Technical Documentation */}
           <div id="technical" className="mb-16">
             <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-gray-200 dark:border-zinc-700 overflow-hidden shadow-sm">
               <div className="p-8">
@@ -635,7 +630,6 @@ export default function DocsPage() {
             </div>
           </div>
 
-          {/* Call to Action */}
           <div className="text-center">
             <div className="relative overflow-hidden bg-gradient-to-br from-purple-600 via-blue-600 to-cyan-600 rounded-3xl p-12 shadow-2xl">
               <div className="absolute inset-0 bg-black/20"></div>

@@ -1,9 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { withFreshPrismaClient } from '@/lib/prisma';
 
-// GET - Get leaderboard data for all classrooms a student is enrolled in
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -12,7 +12,6 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get current user
     const currentUser = await withFreshPrismaClient(async (client) => {
       return await client.user.findUnique({
         where: { email: session.user.email }
@@ -23,7 +22,6 @@ export async function GET() {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Students can see leaderboards for classrooms they're enrolled in
     if (currentUser.role === 'STUDENT') {
       const enrollments = await withFreshPrismaClient(async (client) => {
         return await client.enrollment.findMany({
@@ -55,7 +53,6 @@ export async function GET() {
       const leaderboardData = enrollments.map((enrollment: any) => {
         const classroom = enrollment.classroom;
         
-        // Calculate leaderboard for this classroom
         const studentStats = new Map();
         
         classroom.assignments.forEach((assignment: any) => {
@@ -82,7 +79,6 @@ export async function GET() {
             });
         });
 
-        // Convert to array and calculate averages
         const leaderboard = Array.from(studentStats.values()).map(stats => ({
           ...stats,
           averageScore: stats.totalScores.length > 0 
@@ -109,7 +105,6 @@ export async function GET() {
       });
     }
 
-    // Teachers can see leaderboards for their classrooms
     if (currentUser.role === 'TEACHER') {
       const classrooms = await withFreshPrismaClient(async (client) => {
         return await client.classroom.findMany({
@@ -135,7 +130,6 @@ export async function GET() {
       });
 
       const leaderboardData = classrooms.map((classroom: any) => {
-        // Calculate leaderboard for this classroom
         const studentStats = new Map();
         
         classroom.assignments.forEach((assignment: any) => {
@@ -162,7 +156,6 @@ export async function GET() {
             });
         });
 
-        // Convert to array and calculate averages
         const leaderboard = Array.from(studentStats.values()).map(stats => ({
           ...stats,
           averageScore: stats.totalScores.length > 0 

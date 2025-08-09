@@ -19,7 +19,6 @@ export async function GET(
 
     const { id: classroomId } = await params;
 
-    // Verify the user is a teacher of this classroom
     const classroom = await prisma.classroom.findUnique({
       where: { id: classroomId },
       select: { teacherId: true }
@@ -32,7 +31,6 @@ export async function GET(
       );
     }
 
-    // Get all assignments for this classroom with submission statistics
     const assignments = await prisma.assignment.findMany({
       where: { classroomId },
       include: {
@@ -47,12 +45,10 @@ export async function GET(
       orderBy: { createdAt: 'desc' }
     });
 
-    // Get enrolled students count once
     const enrolledStudents = await prisma.enrollment.count({
       where: { classroomId }
     });
 
-    // Calculate analytics for each assignment
     const analytics = assignments.map(assignment => {
       const submissions = assignment.submissions;
       const totalSubmissions = submissions.length;
@@ -100,7 +96,6 @@ export async function GET(
         });
       }
 
-      // Score distribution
       const scoreDistribution = [
         { range: '90-100', count: submissions.filter(s => s.score && s.score >= 90).length },
         { range: '80-89', count: submissions.filter(s => s.score && s.score >= 80 && s.score < 90).length },
@@ -110,7 +105,6 @@ export async function GET(
         { range: 'Ungraded', count: submissions.filter(s => !s.score).length }
       ];
 
-      // Get top students for this assignment
       const topStudents = submissions
         .filter(s => s.score !== null && s.score !== undefined)
         .sort((a, b) => (b.score || 0) - (a.score || 0))
@@ -124,7 +118,6 @@ export async function GET(
           status: s.status
         }));
 
-      // Calculate completion rate (students who submitted vs total enrolled)
       const uniqueSubmitters = new Set(submissions.map(s => s.studentId)).size;
       const completionRate = enrolledStudents > 0 ? (uniqueSubmitters / enrolledStudents) * 100 : 0;
 

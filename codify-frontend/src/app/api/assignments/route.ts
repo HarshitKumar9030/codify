@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-// POST /api/assignments - Create a new assignment
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -37,7 +36,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify the classroom belongs to the teacher
     const classroom = await prisma.classroom.findFirst({
       where: {
         id: classroomId,
@@ -90,7 +88,6 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // Create notifications for all students in the classroom
     const enrollments = await prisma.enrollment.findMany({
       where: {
         classroomId: classroomId
@@ -132,7 +129,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET /api/assignments - Get assignments
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -150,7 +146,6 @@ export async function GET(request: NextRequest) {
     let assignments;
 
     if (session.user.role === "TEACHER") {
-      // Get assignments created by teacher
       const whereClause = {
         teacherId: session.user.id,
         ...(classroomId && { classroomId })
@@ -176,7 +171,6 @@ export async function GET(request: NextRequest) {
         }
       });
     } else {
-      // Get assignments for student's enrolled classrooms
       const enrollments = await prisma.enrollment.findMany({
         where: {
           studentId: session.user.id
@@ -192,7 +186,7 @@ export async function GET(request: NextRequest) {
         classroomId: {
           in: classroomIds
         },
-        isActive: true, // Only show active (non-revoked) assignments to students
+        isActive: true, 
         ...(classroomId && { classroomId })
       };
 
