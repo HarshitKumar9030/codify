@@ -15,24 +15,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user exists
     const user = await prisma.user.findUnique({
       where: { email },
       select: { id: true, email: true }
     });
-
-    // Always return success to prevent email enumeration
     if (!user) {
       return NextResponse.json({
         message: "If an account with that email exists, we've sent you a password reset link."
       });
     }
-
-    // Generate reset token
     const resetToken = crypto.randomBytes(32).toString('hex');
     const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour
-
-    // Save reset token to database
     await prisma.user.update({
       where: { id: user.id },
       data: {
@@ -40,8 +33,6 @@ export async function POST(request: NextRequest) {
         resetTokenExpiry,
       }
     });
-
-    // Send email
     try {
       const resetUrl = `${process.env.NEXTAUTH_URL}/reset-password?token=${resetToken}`;
       const emailHtml = getPasswordResetEmailHtml(resetUrl);
@@ -53,16 +44,13 @@ export async function POST(request: NextRequest) {
       );
     } catch (emailError) {
       console.error("Email sending failed:", emailError);
-      // Don't expose email sending errors to user
       return NextResponse.json({
         message: "If an account with that email exists, we've sent you a password reset link."
       });
     }
-
     return NextResponse.json({
       message: "If an account with that email exists, we've sent you a password reset link."
     });
-
   } catch (error) {
     console.error("Forgot password error:", error);
     return NextResponse.json(

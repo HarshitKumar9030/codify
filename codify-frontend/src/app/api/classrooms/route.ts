@@ -1,10 +1,10 @@
+
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma, withFreshPrismaClient } from "@/lib/prisma";
 
 function generateClassroomCode(): string {
-  // Generate 8-digit alphanumeric code
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let result = '';
   for (let i = 0; i < 8; i++) {
@@ -13,7 +13,6 @@ function generateClassroomCode(): string {
   return result;
 }
 
-// POST /api/classrooms - Create a new classroom
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -34,7 +33,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate unique classroom code using fresh client approach
     let classroomCode: string = '';
     let isUnique = false;
     let attempts = 0;
@@ -54,7 +52,6 @@ export async function POST(request: NextRequest) {
         }
       } catch (error) {
         console.error(`Failed to check classroom code uniqueness (attempt ${attempts + 1}):`, error);
-        // Continue with the loop to try again
       }
       
       attempts++;
@@ -67,7 +64,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create classroom using fresh client
     const classroom = await withFreshPrismaClient(async (client) => {
       return await client.classroom.create({
         data: {
@@ -108,7 +104,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET /api/classrooms - Get user's classrooms
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -123,7 +118,6 @@ export async function GET() {
     let classrooms;
 
     if (session.user.role === "TEACHER") {
-      // Get classrooms created by teacher
       classrooms = await prisma.classroom.findMany({
         where: {
           teacherId: session.user.id
@@ -148,13 +142,11 @@ export async function GET() {
         }
       });
 
-      // Add isTeacher property for teacher's own classrooms
       classrooms = classrooms.map(classroom => ({
         ...classroom,
         isTeacher: true
       }));
     } else {
-      // Get classrooms student is enrolled in
       classrooms = await prisma.classroom.findMany({
         where: {
           enrollments: {
@@ -183,7 +175,6 @@ export async function GET() {
         }
       });
 
-      // Add isTeacher property for student enrolled classrooms
       classrooms = classrooms.map(classroom => ({
         ...classroom,
         isTeacher: false

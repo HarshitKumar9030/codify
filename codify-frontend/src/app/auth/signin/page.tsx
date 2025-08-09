@@ -20,7 +20,6 @@ export default function SignIn() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Check for success message from signup
   useEffect(() => {
     const message = searchParams.get('message');
     if (message) {
@@ -32,10 +31,9 @@ export default function SignIn() {
     e.preventDefault();
     setIsLoading(true);
     setError("");
-    setSuccessMessage(""); // Clear success message when submitting
+  setSuccessMessage("");
     setFieldErrors({});
 
-    // Client-side validation
     const newFieldErrors: {[key: string]: string} = {};
 
     if (!email.trim()) {
@@ -68,7 +66,6 @@ export default function SignIn() {
           setError("Authentication failed. Please try again.");
         }
       } else {
-        // Get session to check user role
         const session = await getSession();
         if (session?.user?.role === "TEACHER") {
           router.push("/dashboard/teacher");
@@ -83,7 +80,6 @@ export default function SignIn() {
     }
   };
 
-  // Show loading screen while checking authentication
   if (authLoading) {
     return <AuthLoading 
       message="Checking authentication..." 
@@ -91,7 +87,6 @@ export default function SignIn() {
     />;
   }
 
-  // Don't render signin form if user is authenticated (they'll be redirected)
   if (isAuthenticated) {
     return <AuthLoading 
       message="Redirecting to dashboard..." 
@@ -102,7 +97,6 @@ export default function SignIn() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-zinc-50 to-white dark:from-zinc-950 dark:to-zinc-900 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
-        {/* Back to home */}
         <Link 
           href="/"
           className="inline-flex items-center gap-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors mb-8"
@@ -111,7 +105,6 @@ export default function SignIn() {
           Back to home
         </Link>
 
-        {/* Sign-in form */}
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-lg p-8">
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">

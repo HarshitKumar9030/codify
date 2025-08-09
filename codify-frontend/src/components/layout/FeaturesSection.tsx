@@ -53,9 +53,8 @@ const features = [
 
 export default function FeaturesSection() {
   return (
-    <section className="py-24 px-4 sm:px-6 lg:px-8 bg-zinc-50/50 dark:bg-zinc-900/50">
+  <section id="features" className="py-24 px-4 sm:px-6 lg:px-8 bg-zinc-50/50 dark:bg-zinc-900/50">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
         <div className="text-center mb-20">
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-zinc-900 dark:text-white mb-6">
             Powerful Features for Modern Education
@@ -64,30 +63,20 @@ export default function FeaturesSection() {
             Everything you need to create engaging coding education experiences. From secure code execution to comprehensive analytics, Codify provides the complete toolkit for modern programming education.
           </p>
         </div>
-
-        {/* Features Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {features.map((feature, index) => (
             <div
               key={index}
-              className="group relative p-8 bg-white dark:bg-zinc-800 rounded-2xl border border-zinc-200/50 dark:border-zinc-700/50 hover:border-zinc-300 dark:hover:border-zinc-600 transition-all duration-300 hover:shadow-xl hover:shadow-zinc-200/50 dark:hover:shadow-zinc-900/50"
+        className="group relative p-8 bg-white dark:bg-zinc-800 rounded-2xl border border-zinc-200/60 dark:border-zinc-700/60 transition-all duration-300 hover:border-zinc-300 dark:hover:border-zinc-600 hover:shadow-xl hover:shadow-zinc-200/50 dark:hover:shadow-zinc-900/50"
             >
-              {/* Gradient background on hover */}
-              <div className="absolute inset-0 bg-gradient-to-br from-zinc-50 to-zinc-100 dark:from-zinc-800 dark:to-zinc-900 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              
-              {/* Content */}
+        <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-zinc-50 to-zinc-100 dark:from-zinc-800 dark:to-zinc-900 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
               <div className="relative z-10">
-                {/* Icon */}
                 <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-r ${feature.color} mb-6 shadow-lg`}>
                   <feature.icon className="w-6 h-6 text-white" />
                 </div>
-
-                {/* Title */}
                 <h3 className="text-xl font-semibold text-zinc-900 dark:text-white mb-3">
                   {feature.title}
                 </h3>
-                
-                {/* Description */}
                 <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed">
                   {feature.description}
                 </p>

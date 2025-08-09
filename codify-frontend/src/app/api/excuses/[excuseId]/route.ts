@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
-// POST - Review excuse (approve/reject)
 export async function POST(
   request: NextRequest,
   { params }: { params: { excuseId: string } }
@@ -28,7 +27,6 @@ export async function POST(
       );
     }
 
-    // Find excuse and verify teacher authorization
     const excuse = await prisma.submissionExcuse.findUnique({
       where: { id: excuseId },
       include: {
@@ -47,7 +45,6 @@ export async function POST(
       );
     }
 
-    // Verify the user is the teacher of this classroom
     if (excuse.assignment.classroom.teacherId !== session.user.id) {
       return NextResponse.json(
         { error: 'Unauthorized access' },
@@ -55,7 +52,6 @@ export async function POST(
       );
     }
 
-    // Update excuse
     const updatedExcuse = await prisma.submissionExcuse.update({
       where: { id: excuseId },
       data: {
@@ -74,9 +70,7 @@ export async function POST(
       }
     });
 
-    // If approved, we may want to create a notification or take other actions
     if (status === 'APPROVED') {
-      // Could create a notification here
       await prisma.notification.create({
         data: {
           userId: excuse.studentId,
@@ -102,7 +96,6 @@ export async function POST(
   }
 }
 
-// GET - Get excuse details
 export async function GET(
   request: NextRequest,
   { params }: { params: { excuseId: string } }
@@ -141,9 +134,7 @@ export async function GET(
       );
     }
 
-    // Check if user has permission to view this excuse
     if (excuse.studentId !== session.user.id) {
-      // If not the student, check if they're the teacher
       const assignment = await prisma.assignment.findUnique({
         where: { id: excuse.assignmentId },
         include: { classroom: true }

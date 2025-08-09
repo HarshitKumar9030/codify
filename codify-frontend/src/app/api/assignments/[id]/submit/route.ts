@@ -151,7 +151,6 @@ export async function POST(
     if (userFilesResponse.ok) {
       const filesData = await userFilesResponse.json();
       if (filesData.success && filesData.files) {
-        // Filter and include relevant files (exclude directories and hidden files)
         attachedFiles = filesData.files
           .filter((file: FileItem) => file.type === 'file' && !file.name.startsWith('.'))
           .map((file: FileItem) => ({
@@ -165,7 +164,6 @@ export async function POST(
 
     let submission;
     if (existingSubmission) {
-      // Update existing submission 
       submission = await prisma.submission.update({
         where: { id: existingSubmission.id },
         data: {
@@ -175,8 +173,7 @@ export async function POST(
           isLate: isLate || false,
           hoursLate: hoursLate,
           latePenalty: latePenalty,
-          originalScore: null, // Will be set when graded
-          // Reset grading fields
+          originalScore: null, 
           score: null,
           feedback: null,
           gradedAt: null,
@@ -184,7 +181,6 @@ export async function POST(
         }
       });
     } else {
-      // Create new submission
       submission = await prisma.submission.create({
         data: {
           code,
@@ -194,12 +190,11 @@ export async function POST(
           isLate: isLate || false,
           hoursLate: hoursLate,
           latePenalty: latePenalty,
-          originalScore: null // Will be set when graded
+          originalScore: null 
         }
       });
     }
 
-    // Create notification for the teacher about new submission
     try {
       await prisma.notification.create({
         data: {
@@ -220,7 +215,6 @@ export async function POST(
       });
     } catch (notificationError) {
       console.error('Failed to create teacher notification:', notificationError);
-      // Continue even if notification fails
     }
 
     return NextResponse.json({

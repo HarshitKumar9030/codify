@@ -30,17 +30,14 @@ export default function SignUp() {
     setError("");
     setFieldErrors({});
 
-    // Client-side validation
     const newFieldErrors: {[key: string]: string} = {};
 
-    // Validate name
     if (!formData.name.trim()) {
       newFieldErrors.name = "Name is required";
     } else if (formData.name.trim().length < 2) {
       newFieldErrors.name = "Name must be at least 2 characters long";
     }
 
-    // Validate email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!formData.email.trim()) {
       newFieldErrors.email = "Email is required";
@@ -48,17 +45,15 @@ export default function SignUp() {
       newFieldErrors.email = "Please enter a valid email address";
     }
 
-    // Validate password
     if (!formData.password) {
       newFieldErrors.password = "Password is required";
     } else {
       const passwordValidation = validatePassword(formData.password);
       if (!passwordValidation.isValid) {
-        newFieldErrors.password = passwordValidation.errors[0]; // Show first error
+  newFieldErrors.password = passwordValidation.errors[0];
       }
     }
 
-    // If there are field errors, don't submit
     if (Object.keys(newFieldErrors).length > 0) {
       setFieldErrors(newFieldErrors);
       setIsLoading(false);
@@ -79,21 +74,15 @@ export default function SignUp() {
       if (response.ok) {
         router.push("/auth/signin?message=" + encodeURIComponent(data.message || "Account created successfully"));
       } else {
-        // Handle different types of errors
         if (response.status === 409) {
-          // Email already exists - show as field error
           setFieldErrors({ email: data.error || "An account with this email already exists" });
         } else if (data.details && Array.isArray(data.details)) {
-          // Password validation errors from backend
           setError(data.error + ": " + data.details.join(", "));
         } else if (response.status === 400 && data.error.includes("email")) {
-          // Email validation error
           setFieldErrors({ email: data.error });
         } else if (response.status === 400 && data.error.includes("Password")) {
-          // Password validation error
           setFieldErrors({ password: data.error });
         } else if (response.status === 400 && data.error.includes("Name")) {
-          // Name validation error
           setFieldErrors({ name: data.error });
         } else {
           setError(data.error || "Something went wrong");
@@ -113,7 +102,6 @@ export default function SignUp() {
       [name]: value,
     });
 
-    // Clear field error when user starts typing
     if (fieldErrors[name]) {
       setFieldErrors(prev => ({
         ...prev,
@@ -121,13 +109,11 @@ export default function SignUp() {
       }));
     }
 
-    // Show password strength indicator when user starts typing password
     if (name === 'password') {
       setShowPasswordStrength(value.length > 0);
     }
   };
 
-  // Show loading screen while checking authentication
   if (authLoading) {
     return <AuthLoading 
       message="Checking authentication..." 
@@ -135,7 +121,6 @@ export default function SignUp() {
     />;
   }
 
-  // Don't render signup form if user is authenticated (they'll be redirected)
   if (isAuthenticated) {
     return <AuthLoading 
       message="Redirecting to dashboard..." 
@@ -146,7 +131,6 @@ export default function SignUp() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-zinc-50 to-white dark:from-zinc-950 dark:to-zinc-900 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
-        {/* Back to home */}
         <Link 
           href="/"
           className="inline-flex items-center gap-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors mb-8"
@@ -155,7 +139,6 @@ export default function SignUp() {
           Back to home
         </Link>
 
-        {/* Sign-up form */}
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-lg p-8">
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">
@@ -174,7 +157,6 @@ export default function SignUp() {
               </div>
             )}
 
-            {/* Role Selection */}
             <div>
               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
                 I am a

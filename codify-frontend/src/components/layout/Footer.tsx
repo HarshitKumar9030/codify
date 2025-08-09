@@ -3,19 +3,15 @@ import { Code, Github, Twitter, Linkedin } from "lucide-react";
 
 export default function Footer() {
   return (
-    <footer className="border-t border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
-          
-          {/* Brand */}
+    <footer className="border-t border-zinc-200/80 bg-white dark:border-zinc-800/80 dark:bg-zinc-900">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-12">
+        <div className="flex flex-col items-start justify-between gap-8 md:flex-row md:items-center">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
               <Code className="w-4 h-4 text-white" />
             </div>
             <span className="text-xl font-semibold text-gray-900 dark:text-white">CodiFY</span>
           </div>
-
-          {/* Quick Links */}
           <div className="flex gap-8">
             <Link 
               href="/docs" 
@@ -30,8 +26,6 @@ export default function Footer() {
               Contact
             </Link>
           </div>
-
-          {/* Social Links */}
           <div className="flex gap-3">
             <a
               href="#"
@@ -53,9 +47,7 @@ export default function Footer() {
             </a>
           </div>
         </div>
-
-        {/* Bottom */}
-        <div className="border-t border-gray-200 dark:border-zinc-800 mt-8 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div className="mt-8 flex flex-col items-center justify-between gap-4 border-t border-zinc-200/80 pt-8 dark:border-zinc-800/80 sm:flex-row">
           <p className="text-sm text-gray-600 dark:text-gray-400">
             © {new Date().getFullYear()} CodiFY. All rights reserved.
           </p>

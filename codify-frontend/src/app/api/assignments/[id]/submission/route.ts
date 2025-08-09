@@ -5,7 +5,6 @@ import { authOptions } from '@/lib/auth';
 
 const prisma = new PrismaClient();
 
-// GET - Get user's submission for an assignment
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -19,7 +18,6 @@ export async function GET(
 
     const { id: assignmentId } = await params;
 
-    // Get current user
     const currentUser = await prisma.user.findUnique({
       where: { email: session.user.email }
     });
@@ -28,14 +26,13 @@ export async function GET(
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Get user's submission for this assignment
     const submission = await prisma.submission.findFirst({
       where: {
         assignmentId,
         studentId: currentUser.id
       },
       orderBy: {
-        submittedAt: 'desc' // Get the latest submission
+        submittedAt: 'desc' 
       }
     });
 

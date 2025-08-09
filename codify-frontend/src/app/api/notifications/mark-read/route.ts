@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
-// POST - Mark notification as read
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -20,7 +19,6 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Get current user
     const currentUser = await prisma.user.findUnique({
       where: { email: session.user.email },
       select: { id: true }
@@ -30,7 +28,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Update notification as read
     const updatedNotification = await prisma.notification.update({
       where: { 
         id: notificationId,

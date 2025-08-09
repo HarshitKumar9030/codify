@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
-// POST - Submit excuse for late submission
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -28,7 +27,6 @@ export async function POST(
       );
     }
 
-    // Check if assignment exists and is past due
     const assignment = await prisma.assignment.findUnique({
       where: { id: assignmentId },
       select: { dueDate: true, allowLateSubmissions: true }
@@ -55,7 +53,6 @@ export async function POST(
       );
     }
 
-    // Check if excuse already exists
     const existingExcuse = await prisma.submissionExcuse.findUnique({
       where: {
         studentId_assignmentId: {
@@ -72,7 +69,6 @@ export async function POST(
       );
     }
 
-    // Create excuse
     const excuse = await prisma.submissionExcuse.create({
       data: {
         studentId: session.user.id,
@@ -96,7 +92,6 @@ export async function POST(
   }
 }
 
-// GET - Get excuse status for assignment
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

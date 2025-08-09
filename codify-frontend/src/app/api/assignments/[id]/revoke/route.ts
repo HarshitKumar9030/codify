@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
-// PATCH - Revoke assignment (mark as inactive)
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -20,7 +19,6 @@ export async function PATCH(
 
     const { id: assignmentId } = await params;
 
-    // Verify assignment exists and teacher owns it
     const assignment = await prisma.assignment.findUnique({
       where: { id: assignmentId },
       include: {
@@ -47,7 +45,6 @@ export async function PATCH(
       );
     }
 
-    // Update assignment to revoked status
     const updatedAssignment = await prisma.assignment.update({
       where: { id: assignmentId },
       data: {
@@ -56,7 +53,6 @@ export async function PATCH(
       }
     });
 
-    // Create notifications for all students in the classroom
     const enrollments = await prisma.enrollment.findMany({
       where: {
         classroomId: assignment.classroomId
@@ -93,7 +89,6 @@ export async function PATCH(
   }
 }
 
-// POST - Reactivate assignment
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -110,7 +105,6 @@ export async function POST(
 
     const { id: assignmentId } = await params;
 
-    // Verify assignment exists and teacher owns it
     const assignment = await prisma.assignment.findUnique({
       where: { id: assignmentId },
       include: {
@@ -132,7 +126,6 @@ export async function POST(
       );
     }
 
-    // Update assignment to active status
     const updatedAssignment = await prisma.assignment.update({
       where: { id: assignmentId },
       data: {
@@ -141,7 +134,6 @@ export async function POST(
       }
     });
 
-    // Create notifications for all students in the classroom
     const enrollments = await prisma.enrollment.findMany({
       where: {
         classroomId: assignment.classroomId

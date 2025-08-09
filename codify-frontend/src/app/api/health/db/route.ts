@@ -3,12 +3,9 @@ import { withFreshPrismaClient, withPrismaRetry } from '@/lib/prisma';
 
 export async function GET() {
   try {
-    // Test database connection with fresh client
     const result = await withFreshPrismaClient(async (client) => {
-      // Simple connection test
       const userCount = await client.user.count();
       const classroomCount = await client.classroom.count();
-      
       return {
         userCount,
         classroomCount,
@@ -37,13 +34,11 @@ export async function GET() {
   }
 }
 
-// POST - Test retry logic
 export async function POST() {
   try {
     console.log('Testing database with retry logic...');
     
     const result = await withPrismaRetry(async () => {
-      // Use a fresh client for this test
       return await withFreshPrismaClient(async (client) => {
         const userCount = await client.user.count();
         return { userCount, status: 'retry_test_passed' };

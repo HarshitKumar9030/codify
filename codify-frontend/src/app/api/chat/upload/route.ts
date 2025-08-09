@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-// POST /api/chat/upload - Upload file for chat using execution server
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -25,7 +24,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check file size (limit to 10MB)
     if (file.size > 10 * 1024 * 1024) {
       return NextResponse.json(
         { error: "File size too large (max 10MB)" },
@@ -33,7 +31,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check file type
     const allowedTypes = [
       'image/jpeg',
       'image/png',
@@ -56,18 +53,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create unique filename
     const timestamp = Date.now();
     const filename = `chat_${session.user.id}_${timestamp}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
     
-    // Create FormData for execution server
     const serverFormData = new FormData();
     serverFormData.append('file', file);
     serverFormData.append('userId', session.user.id);
     serverFormData.append('requestingUserId', session.user.id);
     serverFormData.append('path', `/chat/${classroomId}/${filename}`);
     
-    // Upload to execution server
     const executionServerUrl = process.env.EXECUTION_SERVER_URL || 'http://localhost:8080';
     const uploadResponse = await fetch(`${executionServerUrl}/api/files/upload`, {
       method: 'POST',
@@ -84,7 +78,6 @@ export async function POST(request: NextRequest) {
       throw new Error(uploadResult.error || 'Upload failed');
     }
 
-    // Return file information with execution server URL
     const fileUrl = `${executionServerUrl}/api/files/download?userId=${session.user.id}&path=/chat/${classroomId}/${filename}`;
     
     return NextResponse.json({

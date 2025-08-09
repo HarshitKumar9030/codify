@@ -10,8 +10,6 @@ export default function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const { data: session } = useSession();
-
-  // Close menus when clicking outside
   useEffect(() => {
     const handleClickOutside = () => {
       setIsUserMenuOpen(false);
@@ -32,7 +30,6 @@ export default function Navigation() {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md border-b border-zinc-200/20 dark:border-zinc-800/40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center h-16">
-          {/* Logo */}
           <div className="flex-shrink-0">
             <Link href="/" className="flex items-center gap-3 group">
               <div className="relative">
@@ -43,8 +40,6 @@ export default function Navigation() {
               <span className="text-xl font-semibold text-zinc-900 dark:text-white">CodiFY</span>
             </Link>
           </div>
-
-          {/* Desktop Navigation - Centered */}
           <div className="hidden md:flex flex-1 justify-center">
             <div className="flex items-center gap-1">
               {session && (
@@ -75,8 +70,6 @@ export default function Navigation() {
               </Link>
             </div>
           </div>
-
-          {/* Desktop CTA - Right side */}
           <div className="hidden md:flex items-center gap-3 flex-shrink-0">
             <ThemeToggle />
             {session ? (
@@ -151,8 +144,6 @@ export default function Navigation() {
               </>
             )}
           </div>
-
-          {/* Mobile Menu Button */}
           <div className="md:hidden flex-1 flex justify-end">
             <button
               onClick={(e) => {
@@ -165,8 +156,6 @@ export default function Navigation() {
             </button>
           </div>
         </div>
-
-        {/* Mobile Menu */}
         {isMenuOpen && (
           <div className="md:hidden border-t border-zinc-200/20 dark:border-zinc-800/40 animate-in slide-in-from-top-2 duration-200">
             <div className="px-2 pt-2 pb-3 space-y-1">
@@ -201,7 +190,6 @@ export default function Navigation() {
                 Contact
               </Link>
               
-              {/* Theme Toggle in Mobile */}
               <div className="px-3 py-2">
                 <ThemeToggle />
               </div>

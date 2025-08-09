@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
-// GET - Get students in a classroom (teacher only)
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -17,7 +16,6 @@ export async function GET(
 
     const { id: classroomId } = await params;
 
-    // Get current user
     const currentUser = await prisma.user.findUnique({
       where: { email: session.user.email }
     });
@@ -26,7 +24,6 @@ export async function GET(
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Verify classroom exists and user is the teacher
     const classroom = await prisma.classroom.findUnique({
       where: { id: classroomId }
     });
@@ -39,7 +36,6 @@ export async function GET(
       return NextResponse.json({ error: 'Access denied - teacher only' }, { status: 403 });
     }
 
-    // Get all students enrolled in this classroom
     const enrollments = await prisma.enrollment.findMany({
       where: { classroomId },
       include: {

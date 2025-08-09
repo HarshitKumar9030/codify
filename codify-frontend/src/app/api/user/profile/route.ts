@@ -17,7 +17,6 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const { name, email } = body;
 
-    // Validate input
     if (!name || !email) {
       return NextResponse.json(
         { error: "Name and email are required" },
@@ -25,7 +24,6 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Check if email is already taken by another user
     const existingUser = await prisma.user.findFirst({
       where: {
         email,
@@ -42,7 +40,6 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Update user profile
     const updatedUser = await prisma.user.update({
       where: { id: session.user.id },
       data: {

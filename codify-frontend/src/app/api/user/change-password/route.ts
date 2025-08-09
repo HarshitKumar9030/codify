@@ -18,7 +18,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { currentPassword, newPassword } = body;
 
-    // Validate input
     if (!currentPassword || !newPassword) {
       return NextResponse.json(
         { error: "Current password and new password are required" },
@@ -33,7 +32,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user with password
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: {
@@ -49,7 +47,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify current password
     const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
     
     if (!isCurrentPasswordValid) {
@@ -59,10 +56,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Hash new password
     const hashedNewPassword = await bcrypt.hash(newPassword, 12);
 
-    // Update password
     await prisma.user.update({
       where: { id: session.user.id },
       data: {
