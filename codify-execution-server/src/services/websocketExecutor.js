@@ -7,10 +7,9 @@ import { v4 as uuidv4 } from 'uuid';
 class WebSocketExecutionServer {
   constructor(server) {
     this.wss = new WebSocketServer({ server });
-    this.activeExecutions = new Map(); // Store active processes (Python and JavaScript)
+    this.activeExecutions = new Map(); 
     
     this.wss.on('connection', (ws, request) => {
-      console.log('New WebSocket connection established');
       
       ws.on('message', async (message) => {
         try {
@@ -26,7 +25,6 @@ class WebSocketExecutionServer {
       });
       
       ws.on('close', () => {
-        console.log('WebSocket connection closed');
         this.cleanupExecution(ws);
       });
       
@@ -70,11 +68,9 @@ class WebSocketExecutionServer {
     }
 
     try {
-      // Check if we already have an active execution for this connection
       let execution = this.activeExecutions.get(ws);
       
       if (!execution || execution.language !== language) {
-        // Create new execution environment
         const executionId = uuidv4();
         const tempDir = path.join(process.cwd(), 'temp', executionId);
         fs.mkdirSync(tempDir, { recursive: true });
@@ -88,7 +84,6 @@ class WebSocketExecutionServer {
         }
         
         if (childProcess) {
-          // Store the persistent process for this connection
           execution = {
             process: childProcess,
             executionId,
@@ -101,13 +96,11 @@ class WebSocketExecutionServer {
       }
       
       if (execution) {
-        // Send execution started message
         ws.send(JSON.stringify({
           type: 'execution_started',
           executionId: execution.executionId
         }));
         
-        // Send the code to the persistent process
         execution.process.stdin.write(JSON.stringify({ type: 'execute', code }) + '\n');
       }
       
@@ -128,7 +121,6 @@ class WebSocketExecutionServer {
     const executorFile = path.join(tempDir, 'executor.py');
     fs.writeFileSync(executorFile, executorScript);
     
-    // Start Python process
     const pythonProcess = spawn('python', [executorFile, codeFile], {
       cwd: tempDir,
       stdio: ['pipe', 'pipe', 'pipe']
@@ -139,21 +131,17 @@ class WebSocketExecutionServer {
   }
 
   async createPersistentPython(ws, tempDir, executionId, userId) {
-    console.log(`Creating persistent Python process with userId: ${userId}`);
     
     const executorScript = this.createPersistentPythonExecutor();
     const executorFile = path.join(tempDir, 'persistent_executor.py');
     fs.writeFileSync(executorFile, executorScript);
     
-    // Create access to user files if userId is provided
     if (userId) {
-      console.log(`Setting up user file access for userId: ${userId}`);
       await this.setupUserFileAccess(tempDir, userId);
     } else {
       console.log('No userId provided, skipping file access setup');
     }
     
-    // Start persistent Python process
     const pythonProcess = spawn('python', [executorFile], {
       cwd: tempDir,
       stdio: ['pipe', 'pipe', 'pipe']
@@ -171,7 +159,6 @@ class WebSocketExecutionServer {
     const executorFile = path.join(tempDir, 'executor.js');
     fs.writeFileSync(executorFile, executorScript);
     
-    // Start Node.js process
     const nodeProcess = spawn('node', [executorFile, codeFile], {
       cwd: tempDir,
       stdio: ['pipe', 'pipe', 'pipe']
@@ -186,7 +173,6 @@ class WebSocketExecutionServer {
     const executorFile = path.join(tempDir, 'persistent_executor.js');
     fs.writeFileSync(executorFile, executorScript);
     
-    // Start persistent Node.js process
     const nodeProcess = spawn('node', [executorFile], {
       cwd: tempDir,
       stdio: ['pipe', 'pipe', 'pipe']
@@ -197,11 +183,9 @@ class WebSocketExecutionServer {
   }
 
   setupProcessHandlers(ws, childProcess) {
-    // Handle process output
     childProcess.stdout.on('data', (data) => {
       const output = data.toString();
       if (output.includes('__INPUT_REQUEST__')) {
-        // Process is requesting input
         this.activeExecutions.get(ws).isWaitingForInput = true;
         ws.send(JSON.stringify({
           type: 'input_request',
@@ -240,7 +224,6 @@ class WebSocketExecutionServer {
   }
 
   setupPersistentProcessHandlers(ws, childProcess) {
-    // Handle process output for persistent execution
     childProcess.stdout.on('data', (data) => {
       const output = data.toString();
       const lines = output.split('\n').filter(line => line.trim());
@@ -266,7 +249,6 @@ class WebSocketExecutionServer {
               //   exitCode: 0
               // }));
             } else if (message.type === 'ready') {
-              // Send a different signal to indicate code execution is done but session continues
               ws.send(JSON.stringify({
                 type: 'execution_ready',
                 message: 'Ready for next execution'
@@ -291,7 +273,6 @@ class WebSocketExecutionServer {
             }));
           }
         } catch (error) {
-          // If it's not JSON, treat as regular output
           if (line.trim()) {
             ws.send(JSON.stringify({
               type: 'output',
@@ -310,7 +291,6 @@ class WebSocketExecutionServer {
     });
     
     childProcess.on('close', (code) => {
-      console.log(`Persistent process closed with code: ${code}`);
       this.cleanupExecution(ws);
     });
     
@@ -335,7 +315,6 @@ class WebSocketExecutionServer {
     
     const { input } = payload;
     
-    // Send input to the persistent process
     if (execution.language === 'python' || execution.language === 'javascript') {
       execution.process.stdin.write(JSON.stringify({ type: 'input', data: input }) + '\n');
     } else {
@@ -370,7 +349,6 @@ class WebSocketExecutionServer {
         // Process might already be dead
       }
       
-      // Clean up temporary directory
       try {
         fs.rmSync(execution.tempDir, { recursive: true, force: true });
       } catch (error) {
@@ -383,19 +361,14 @@ class WebSocketExecutionServer {
 
   async setupUserFileAccess(tempDir, userId) {
     try {
-      console.log(`Setting up file access for user ${userId} in temp dir ${tempDir}`);
       
-      // Get the user's file directory
       const userDir = path.join(process.cwd(), 'user-files', `user_${userId}`);
-      console.log(`Looking for user directory: ${userDir}`);
       
-      // Check if user directory exists
       if (!fs.existsSync(userDir)) {
         console.log(`User directory does not exist: ${userDir}`);
         return;
       }
       
-      // Get all files in the user directory
       const userFiles = fs.readdirSync(userDir, { withFileTypes: true });
       console.log(`Found ${userFiles.length} files/folders in user directory:`, userFiles.map(f => f.name));
       
@@ -405,13 +378,9 @@ class WebSocketExecutionServer {
         
         try {
           if (file.isDirectory()) {
-            // For directories, create a symbolic link or copy recursively
-            console.log(`Copying directory: ${file.name}`);
             fs.cpSync(userFilePath, tempFilePath, { recursive: true });
           } else {
-            // For files, create a symbolic link or copy
-            // Use copy instead of symlink for better Windows compatibility
-            console.log(`Copying file: ${file.name}`);
+
             fs.copyFileSync(userFilePath, tempFilePath);
           }
         } catch (error) {
@@ -419,9 +388,7 @@ class WebSocketExecutionServer {
         }
       }
       
-      console.log(`Successfully set up file access for user ${userId} in ${tempDir}`);
       
-      // List what's now available in temp dir
       const tempFiles = fs.readdirSync(tempDir);
       console.log(`Files now available in temp directory:`, tempFiles);
       
