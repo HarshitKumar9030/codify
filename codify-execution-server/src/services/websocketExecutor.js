@@ -1,15 +1,18 @@
 import { WebSocketServer } from 'ws';
 import { spawn, spawnSync } from 'child_process';
-import path from 'path';
+import path, { dirname } from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 class WebSocketExecutionServer {
   constructor(server) {
     this.wss = new WebSocketServer({ server });
     this.activeExecutions = new Map(); 
   this.pythonCmd = this.resolvePythonCommand();
-  console.log('WebSocketExecutor: Using Python executable:', this.pythonCmd);
     
     this.wss.on('connection', (ws, request) => {
       
@@ -389,7 +392,7 @@ class WebSocketExecutionServer {
 
   async setupUserFileAccess(tempDir, userId) {
     try {
-      const userDir = path.join(process.cwd(), 'user-files', `user_${userId}`);
+  const userDir = path.join(__dirname, '../../user-files', `user_${userId}`);
       if (!fs.existsSync(userDir)) {
         console.log(`User directory does not exist, creating: ${userDir}`);
         try {

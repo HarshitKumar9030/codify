@@ -65,6 +65,14 @@ class FileManagerService {
     const userDir = this.getUserDirectory(userId);
     try {
       await fs.access(userDir);
+      try {
+        const entries = await fs.readdir(userDir);
+        if (!entries || entries.length === 0) {
+          await this.createWelcomeFiles(userDir);
+        }
+      } catch (e) {
+        try { await this.createWelcomeFiles(userDir); } catch {}
+      }
     } catch (error) {
       await fs.mkdir(userDir, { recursive: true });
       await this.createWelcomeFiles(userDir);
