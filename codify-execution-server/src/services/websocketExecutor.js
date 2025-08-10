@@ -1,5 +1,5 @@
 import { WebSocketServer } from 'ws';
-import { spawn } from 'child_process';
+import { spawn, spawnSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
@@ -8,6 +8,8 @@ class WebSocketExecutionServer {
   constructor(server) {
     this.wss = new WebSocketServer({ server });
     this.activeExecutions = new Map(); 
+  this.pythonCmd = this.resolvePythonCommand();
+  console.log('WebSocketExecutor: Using Python executable:', this.pythonCmd);
     
     this.wss.on('connection', (ws, request) => {
       
@@ -33,6 +35,25 @@ class WebSocketExecutionServer {
         this.cleanupExecution(ws);
       });
     });
+  }
+
+  resolvePythonCommand() {
+    const envCmd = process.env.PYTHON_BIN && process.env.PYTHON_BIN.trim();
+    const candidates = [];
+    if (envCmd) candidates.push(envCmd);
+    candidates.push('python');
+    candidates.push('python3');
+    for (const cmd of candidates) {
+      try {
+        const res = spawnSync(cmd, ['--version'], { stdio: 'pipe' });
+        if (res && res.status === 0) {
+          return cmd;
+        }
+      } catch (e) {
+        // ignore and try next
+      }
+    }
+    return 'python';
   }
 
   async handleMessage(ws, data) {
@@ -121,7 +142,7 @@ class WebSocketExecutionServer {
     const executorFile = path.join(tempDir, 'executor.py');
     fs.writeFileSync(executorFile, executorScript);
     
-    const pythonProcess = spawn('python', [executorFile, codeFile], {
+  const pythonProcess = spawn(this.pythonCmd, ['-u', executorFile, codeFile], {
       cwd: tempDir,
       stdio: ['pipe', 'pipe', 'pipe']
     });
@@ -131,7 +152,12 @@ class WebSocketExecutionServer {
   }
 
   async createPersistentPython(ws, tempDir, executionId, userId) {
-    
+    console.log('[WS-Exec] Starting persistent Python session', {
+      executionId,
+      tempDir,
+      userId,
+      python: this.pythonCmd
+    });
     const executorScript = this.createPersistentPythonExecutor();
     const executorFile = path.join(tempDir, 'persistent_executor.py');
     fs.writeFileSync(executorFile, executorScript);
@@ -142,7 +168,7 @@ class WebSocketExecutionServer {
       console.log('No userId provided, skipping file access setup');
     }
     
-    const pythonProcess = spawn('python', [executorFile], {
+    const pythonProcess = spawn(this.pythonCmd, ['-u', executorFile], {
       cwd: tempDir,
       stdio: ['pipe', 'pipe', 'pipe']
     });
@@ -284,6 +310,7 @@ class WebSocketExecutionServer {
     });
     
     childProcess.stderr.on('data', (data) => {
+  console.error('[WS-Exec][stderr]', data.toString());
       ws.send(JSON.stringify({
         type: 'error',
         data: data.toString()
@@ -295,6 +322,7 @@ class WebSocketExecutionServer {
     });
     
     childProcess.on('error', (error) => {
+  console.error('[WS-Exec][child-error]', error);
       ws.send(JSON.stringify({
         type: 'error',
         message: `Process error: ${error.message}`
@@ -361,12 +389,15 @@ class WebSocketExecutionServer {
 
   async setupUserFileAccess(tempDir, userId) {
     try {
-      
       const userDir = path.join(process.cwd(), 'user-files', `user_${userId}`);
-      
       if (!fs.existsSync(userDir)) {
-        console.log(`User directory does not exist: ${userDir}`);
-        return;
+        console.log(`User directory does not exist, creating: ${userDir}`);
+        try {
+          fs.mkdirSync(userDir, { recursive: true });
+        } catch (e) {
+          console.error('Failed to create user directory:', e);
+          return;
+        }
       }
       
       const userFiles = fs.readdirSync(userDir, { withFileTypes: true });
