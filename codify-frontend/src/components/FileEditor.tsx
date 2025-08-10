@@ -297,16 +297,16 @@ License information.
         fileContent = template?.content || '';
       }
       
-      const response = await fetch('/api/files', {
+    const response = await fetch('/api/files', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: effectiveUserId,
+      targetUserId: effectiveUserId,
           path: filePath,
           content: fileContent,
           action: 'create',
           requestingUserId: userId,
-          isTeacher,
+      ...(isTeacher ? { isTeacher } : {}),
           classroomId
         }),
       });
@@ -331,16 +331,16 @@ License information.
 
     try {
       const effectiveUserId = isTeacher ? selectedStudentId : (targetUserId || userId);
-      const response = await fetch('/api/files', {
+    const response = await fetch('/api/files', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: effectiveUserId,
+      targetUserId: effectiveUserId,
           path: editingFile.path,
           content: editingFile.content,
           action: 'update',
           requestingUserId: userId,
-          isTeacher,
+      ...(isTeacher ? { isTeacher } : {}),
           classroomId
         }),
       });
@@ -440,12 +440,7 @@ License information.
   const loadFiles = useCallback(async (path: string = '/') => {
     setLoading(true);
     try {
-      const effectiveUserId = isTeacher ? selectedStudentId : (targetUserId || userId);
-
-      if (!effectiveUserId) {
-        setLoading(false);
-        return;
-      }
+  const effectiveUserId = isTeacher ? selectedStudentId : (targetUserId || userId);
 
       listAbortRef.current?.abort();
       const controller = new AbortController();
@@ -454,9 +449,9 @@ License information.
 
       const params = new URLSearchParams();
       params.append('path', path);
-      params.append('userId', effectiveUserId);
-      if (userId) params.append('requestingUserId', userId);
-      params.append('isTeacher', isTeacher.toString());
+  if (effectiveUserId) params.append('userId', effectiveUserId);
+  if (userId) params.append('requestingUserId', userId);
+  if (isTeacher) params.append('isTeacher', 'true');
       if (classroomId) params.append('classroomId', classroomId);
 
       const response = await fetch(`/api/files?${params}`, { signal: controller.signal });
@@ -491,18 +486,14 @@ License information.
     }
 
     try {
-      const effectiveUserId = isTeacher ? selectedStudentId : (targetUserId || userId);
-      
-      if (!effectiveUserId) {
-        return;
-      }
+  const effectiveUserId = isTeacher ? selectedStudentId : (targetUserId || userId);
 
       if (!file.path || file.path === '/content' || file.name === 'content') {
         return;
       }
       
       const params = new URLSearchParams();
-      params.append('userId', effectiveUserId);
+  if (effectiveUserId) params.append('userId', effectiveUserId);
       if (classroomId) params.append('classroomId', classroomId);
       if (isTeacher) params.append('isTeacher', 'true');
       params.append('path', file.path);
@@ -535,15 +526,15 @@ License information.
       const effectiveUserId = isTeacher ? selectedStudentId : (targetUserId || userId);
       const folderPath = currentPath === '/' ? `/${newFolderName}` : `${currentPath}/${newFolderName}`;
       
-      const response = await fetch('/api/files', {
+    const response = await fetch('/api/files', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: effectiveUserId,
+      targetUserId: effectiveUserId,
           path: folderPath,
           action: 'mkdir',
           requestingUserId: userId,
-          isTeacher,
+      ...(isTeacher ? { isTeacher } : {}),
           classroomId
         }),
       });
@@ -572,15 +563,15 @@ License information.
 
     try {
       const effectiveUserId = isTeacher ? selectedStudentId : (targetUserId || userId);
-      const response = await fetch('/api/files', {
+    const response = await fetch('/api/files', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: effectiveUserId,
+      targetUserId: effectiveUserId,
           path: file.path,
           action: 'delete',
           requestingUserId: userId,
-          isTeacher,
+      ...(isTeacher ? { isTeacher } : {}),
           classroomId
         }),
       });
@@ -662,10 +653,9 @@ License information.
   };
 
   useEffect(() => {
-    if (selectedStudentId || (!isTeacher && userId)) {
-      loadFiles('/');
-    }
-  }, [selectedStudentId, loadFiles, isTeacher, userId]);
+    // Always attempt an initial load; server will infer user from session if no userId is provided
+    loadFiles('/');
+  }, [loadFiles, selectedStudentId, isTeacher, userId, classroomId]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -961,7 +951,7 @@ License information.
               ) : (
         files.map((file) => (
                   <div
-          key={file.path || `${file.name}:${file.modified}`}
+          key={file.path || `${file.type}:${file.name}:${file.modified || ''}`}
                     className="flex items-center justify-between p-2 sm:p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded"
                   >
                     <div
