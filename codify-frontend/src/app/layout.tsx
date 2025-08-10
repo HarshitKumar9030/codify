@@ -10,7 +10,7 @@ const montserrat = Montserrat({
 });
 
 export const metadata: Metadata = {
-  title: "CodiFY - Modern Coding Education Platform", 
+  title: "CodiFY", 
   description: "Learn to code with live feedback and instructor guidance",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#8b5cf6" },

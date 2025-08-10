@@ -415,23 +415,25 @@ License information.
     };
   }, [editingFile, saveFile, isCreateFileOpen, isCreateFolderOpen]);
 
-  // Load students for teacher view
   useEffect(() => {
     if (isTeacher && classroomId) {
       fetch(`/api/classroom/${classroomId}/students`)
         .then(res => res.json())
         .then(data => {
           if (data.success) {
-            setStudents([
+            const studentsList = [
               { id: userId || '', name: 'My Files' },
               ...data.students.map((s: {id: string, name: string}) => ({ id: s.id, name: s.name }))
-            ]);
+            ];
+            setStudents(studentsList);
             setSelectedStudentId(userId || '');
           }
         })
-        .catch(() => {
-          // Silent error handling
+        .catch((error) => {
+          console.error('Error loading students:', error);
         });
+    } else if (!isTeacher && userId) {
+      setSelectedStudentId(userId);
     }
   }, [isTeacher, classroomId, userId]);
 
@@ -440,8 +442,8 @@ License information.
     try {
       const effectiveUserId = isTeacher ? selectedStudentId : (targetUserId || userId);
       
-      // Don't attempt to load files if no valid user ID
       if (!effectiveUserId) {
+        console.log('❌ No user ID available for file listing in FileEditor');
         setLoading(false);
         return;
       }
@@ -453,16 +455,21 @@ License information.
       params.append('isTeacher', isTeacher.toString());
       if (classroomId) params.append('classroomId', classroomId);
       
+      console.log('📁 FileEditor loading files with params:', params.toString());
       const response = await fetch(`/api/files?${params}`);
       const data = await response.json();
+      
+      console.log('📁 FileEditor API response:', data);
       
       if (data.success) {
         setFiles(data.files || []);
         setCurrentPath(path);
       } else {
+        console.error('Failed to load files in FileEditor:', data.message);
         setFiles([]);
       }
-    } catch {
+    } catch (error) {
+      console.error('Error loading files in FileEditor:', error);
       setFiles([]);
     } finally {
       setLoading(false);
@@ -478,13 +485,13 @@ License information.
     try {
       const effectiveUserId = isTeacher ? selectedStudentId : (targetUserId || userId);
       
-      // Don't attempt to load file if no valid user ID
       if (!effectiveUserId) {
+        console.log('No user ID available for file content loading');
         return;
       }
 
-      // Don't attempt to load files with suspicious paths
       if (!file.path || file.path === '/content' || file.name === 'content') {
+        console.log('Invalid file path:', file.path);
         return;
       }
       
@@ -498,6 +505,7 @@ License information.
       const response = await fetch(`/api/files/content?${params}`);
       const data = await response.json();
       
+      
       if (data.success) {
         const language = getLanguageFromExtension(file.name);
         setEditingFile({
@@ -508,10 +516,10 @@ License information.
           isModified: false
         });
       } else {
-        // Silent error handling
+        console.error('Failed to load file content:', data.message);
       }
-    } catch {
-      // Silent error handling
+    } catch (error) {
+      console.error('Error loading file content:', error);
     }
   };
 
@@ -592,7 +600,6 @@ License information.
   const downloadFile = (file: FileItem) => {
     if (!editingFile || editingFile.path !== file.path) {
       loadFileContent(file).then(() => {
-        // File content will be loaded, download will happen in the next render
       });
       return;
     }
@@ -650,27 +657,28 @@ License information.
   };
 
   useEffect(() => {
+    console.log('FileEditor effect triggered - selectedStudentId:', selectedStudentId, 'isTeacher:', isTeacher, 'userId:', userId);
     if (selectedStudentId || (!isTeacher && userId)) {
+      const effectiveId = selectedStudentId || userId;
+      console.log(' Loading files for effective user ID:', effectiveId);
       loadFiles('/');
+    } else {
+      console.log('No valid user ID to load files');
     }
   }, [selectedStudentId, loadFiles, isTeacher, userId]);
 
-  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Ctrl+N or Cmd+N to create new file
       if ((event.ctrlKey || event.metaKey) && event.key === 'n') {
         event.preventDefault();
         setIsCreateFileOpen(true);
       }
       
-      // Ctrl+Shift+N or Cmd+Shift+N to create new folder
       if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'N') {
         event.preventDefault();
         setIsCreateFolderOpen(true);
       }
       
-      // Escape to close modals
       if (event.key === 'Escape') {
         setIsCreateFileOpen(false);
         setIsCreateFolderOpen(false);
@@ -685,7 +693,6 @@ License information.
   return (
     <>
       <div className="flex flex-col xl:grid xl:grid-cols-2 gap-4 sm:gap-6 h-full">
-      {/* File Manager Panel */}
       <Card className="bg-white dark:bg-zinc-900 order-1 xl:order-none">
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -693,7 +700,6 @@ License information.
               <FileText className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
               File Manager
               
-              {/* Keyboard Shortcuts Help */}
               <Button
                 size="sm"
                 variant="ghost"
@@ -729,7 +735,6 @@ License information.
                     </DialogTitle>
                   </DialogHeader>
                   <div className="space-y-6">
-                    {/* Template Selection */}
                     <div>
                       <Label className="text-sm font-medium">Choose a Template (Optional)</Label>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-2">
@@ -755,13 +760,10 @@ License information.
                             type="button"
                             onClick={() => {
                               setSelectedFileTemplate(template.name);
-                              // Smart extension handling
                               if (newFileName.trim()) {
-                                // Remove any existing extension and add the template's extension
                                 const nameWithoutExt = newFileName.replace(/\.[^/.]+$/, '');
                                 setNewFileName(nameWithoutExt + template.extension);
                               } else {
-                                // If no filename, suggest a default name with extension
                                 const defaultName = template.name.toLowerCase().replace(/\s+/g, '-');
                                 setNewFileName(defaultName + template.extension);
                               }
@@ -780,7 +782,6 @@ License information.
                       </div>
                     </div>
 
-                    {/* File Name Input */}
                     <div className="space-y-2">
                       <Label htmlFor="fileName">File Name</Label>
                       <Input
@@ -797,7 +798,6 @@ License information.
                         </div>
                       )}
                       
-                      {/* File name validation */}
                       {newFileName && (
                         <div className="text-xs space-y-1">
                           {newFileName.includes(' ') && (
@@ -819,13 +819,11 @@ License information.
                       )}
                     </div>
 
-                    {/* Current Path Info */}
                     <div className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-lg">
                       <div className="text-xs text-zinc-500 mb-1">File will be created in:</div>
                       <div className="font-mono text-sm">{currentPath === '/' ? '/' : currentPath}/</div>
                     </div>
 
-                    {/* Actions */}
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                       <div className="text-xs text-zinc-500 order-2 sm:order-1">
                         💡 Tip: Press Enter to create quickly
@@ -887,13 +885,11 @@ License information.
                       />
                     </div>
 
-                    {/* Current Path Info */}
                     <div className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-lg">
                       <div className="text-xs text-zinc-500 mb-1">Folder will be created in:</div>
                       <div className="font-mono text-sm">{currentPath === '/' ? '/' : currentPath}/</div>
                     </div>
 
-                    {/* Actions */}
                     <div className="flex flex-col sm:flex-row gap-2">
                       <Button 
                         variant="outline" 
@@ -920,7 +916,6 @@ License information.
             </div>
           </div>
 
-          {/* Student Selector for Teachers */}
           {isTeacher && students.length > 0 && (
             <div className="mt-3 sm:mt-4">
               <Label htmlFor="studentSelect" className="text-sm">Viewing files for:</Label>
@@ -939,7 +934,6 @@ License information.
             </div>
           )}
 
-          {/* Navigation */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-zinc-600 dark:text-zinc-400 mt-3 sm:mt-4">
             <Button
               size="sm"
@@ -1014,7 +1008,6 @@ License information.
         </CardContent>
       </Card>
 
-      {/* Code Editor Panel */}
       <Card className="bg-white dark:bg-zinc-900">
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -1092,8 +1085,6 @@ License information.
       </Card>
       </div>
 
-      {/* Custom Dialogs */}
-    {/* Help Dialog */}
     <Dialog open={showHelpDialog} onOpenChange={setShowHelpDialog}>
       <DialogContent className="mx-4 max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -1106,8 +1097,8 @@ License information.
           <div>
             <h4 className="font-semibold mb-2 text-sm sm:text-base">⌨️ Keyboard Shortcuts:</h4>
             <div className="space-y-1 text-zinc-600 dark:text-zinc-400 text-xs sm:text-sm">
-              <div>🔸 <kbd className="px-1.5 py-0.5 sm:px-2 sm:py-1 bg-zinc-100 dark:bg-zinc-800 rounded text-xs">Ctrl+N</kbd> - Create new file</div>
-              <div>🔸 <kbd className="px-1.5 py-0.5 sm:px-2 sm:py-1 bg-zinc-100 dark:bg-zinc-800 rounded text-xs">Ctrl+Shift+N</kbd> - Create new folder</div>
+              <div>🔸 <kbd className="px-1.5 py-0.5 sm:px-2 sm:py-1 bg-zinc-100 dark:bg-zinc-800 rounded text-xs">Alt+N</kbd> - Create new file</div>
+              <div>🔸 <kbd className="px-1.5 py-0.5 sm:px-2 sm:py-1 bg-zinc-100 dark:bg-zinc-800 rounded text-xs">Alt+Shift+N</kbd> - Create new folder</div>
               <div>🔸 <kbd className="px-1.5 py-0.5 sm:px-2 sm:py-1 bg-zinc-100 dark:bg-zinc-800 rounded text-xs">Escape</kbd> - Close modals</div>
               <div>🔸 <kbd className="px-1.5 py-0.5 sm:px-2 sm:py-1 bg-zinc-100 dark:bg-zinc-800 rounded text-xs">Enter</kbd> - Confirm in dialogs</div>
             </div>
@@ -1218,7 +1209,6 @@ License information.
       </DialogContent>
     </Dialog>
 
-    {/* Success Message */}
     {showSuccessMessage.show && (
       <div className="fixed top-4 right-4 z-50 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg animate-in slide-in-from-top-2">
         <div className="flex items-center">
@@ -1228,7 +1218,6 @@ License information.
       </div>
     )}
 
-    {/* Error Message */}
     {showErrorMessage.show && (
       <div className="fixed top-4 right-4 z-50 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg animate-in slide-in-from-top-2">
         <div className="flex items-center">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Folder, File, Plus, Trash2, Download, Users, User, Save, Sparkles } from 'lucide-react';
 import {
   DropdownMenu,
@@ -67,8 +67,15 @@ export default function FileManager({
   const [studentsLoading, setStudentsLoading] = useState(false);
   const [isModified, setIsModified] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  
+  const isMountedRef = useRef(true);
+  
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
-  // Language detection utility
   const getLanguageFromExtension = (filename: string): string => {
     const extension = filename.split('.').pop()?.toLowerCase();
     
@@ -102,7 +109,6 @@ export default function FileManager({
     }
   };
 
-  // Load students for teacher view
   useEffect(() => {
     if (isTeacher && classroomId) {
       setStudentsLoading(true);
@@ -120,7 +126,6 @@ export default function FileManager({
               });
             }
             
-            // Add students from API response
             studentsList.push(...data.students.map((s: {id: string, name: string}) => ({ 
               id: s.id, 
               name: s.name,
@@ -130,20 +135,17 @@ export default function FileManager({
             console.log('👥 Setting students list:', studentsList);
             setStudents(studentsList);
             
-            // Set default selection logic
             if (studentsList.length > 0) {
               if (targetUserId && studentsList.some(s => s.id === targetUserId)) {
                 setSelectedStudentId(targetUserId);
               } else if (!selectedStudentId || !studentsList.some(s => s.id === selectedStudentId)) {
-                // Default to first student (not teacher files) if available
                 const firstStudent = studentsList.find(s => !s.isTeacher);
                 setSelectedStudentId(firstStudent ? firstStudent.id : studentsList[0].id);
               }
             }
           } else {
-            console.error('❌ Failed to load students:', data.message);
+            console.error('Failed to load students:', data.message);
             
-            // Fallback to teacher's files if no students
             if (userId) {
               setStudents([{ id: userId, name: 'My Files (Teacher)', isTeacher: true }]);
               setSelectedStudentId(userId);
@@ -155,22 +157,22 @@ export default function FileManager({
         })
         .finally(() => setStudentsLoading(false));
     } else if (!isTeacher && userId) {
-      // For non-teachers, just set their own ID
       setSelectedStudentId(userId);
     }
   }, [isTeacher, classroomId, userId, targetUserId, selectedStudentId]);
 
   const loadFiles = useCallback(async (path: string = '/') => {
+    if (!isMountedRef.current) return;
     setLoading(true);
     try {
-      // Determine which user's files to load
       const effectiveUserId = isTeacher ? selectedStudentId : (targetUserId || userId);
       
-      // Add validation to prevent requests with no user ID
       if (!effectiveUserId) {
-        console.error('❌ No user ID available for file listing');
-        setFiles([]);
-        setLoading(false);
+        console.error('No user ID available for file listing');
+        if (isMountedRef.current) {
+          setFiles([]);
+          setLoading(false);
+        }
         return;
       }
       
@@ -185,25 +187,28 @@ export default function FileManager({
       const response = await fetch(`/api/files?${params}`);
       const data = await response.json();
       
-      console.log('📁 Files API response:', data);
       
-      if (data.success) {
-        setFiles(data.files || []);
-        setCurrentPath(path);
-      } else {
-        console.error('Failed to load files:', data.message);
-        // Show user-friendly error
-        setFiles([]);
+      if (isMountedRef.current) {
+        if (data.success) {
+          setFiles(data.files || []);
+          setCurrentPath(path);
+        } else {
+          console.error('Failed to load files:', data.message);
+          setFiles([]);
+        }
       }
     } catch (error) {
       console.error('Error loading files:', error);
-      setFiles([]);
+      if (isMountedRef.current) {
+        setFiles([]);
+      }
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
   }, [userId, classroomId, isTeacher, targetUserId, selectedStudentId]);
 
-  // Fetch students 
   const fetchStudents = useCallback(async () => {
     if (!isTeacher || !classroomId) return;
     
@@ -221,19 +226,16 @@ export default function FileManager({
     }
   }, [isTeacher, classroomId]);
 
-  // Load files when mounts
   useEffect(() => {
     loadFiles('/');
   }, [loadFiles, selectedStudentId]);
 
-  // Fetch students when component mounts (for teachers)
   useEffect(() => {
     if (isTeacher && classroomId) {
       fetchStudents();
     }
   }, [fetchStudents, isTeacher, classroomId]);
 
-  // Helper function to get starter content for file types
   const getStarterContent = (fileName: string): string => {
     const extension = fileName.split('.').pop()?.toLowerCase();
     
@@ -321,7 +323,6 @@ console.log("Hello, World!");
     }
   };
 
-  // Emmet expansions for HTML
   const emmetExpansions: Record<string, string> = {
     'html:5': `<!DOCTYPE html>
 <html lang="en">
@@ -359,12 +360,10 @@ console.log("Hello, World!");
 </form>`,
   };
 
-  // Expand Emmet abbreviation
   const expandEmmet = (text: string): string => {
     return emmetExpansions[text] || text;
   };
 
-  // Save file function
   const saveCurrentFile = useCallback(async () => {
     if (!viewingFile) return;
     
@@ -391,7 +390,6 @@ console.log("Hello, World!");
         setSaveStatus('saved');
         setIsModified(false);
         setTimeout(() => setSaveStatus('idle'), 2000);
-        // Refresh file list to update size
         await loadFiles(currentPath);
       } else {
         setSaveStatus('error');
@@ -404,10 +402,8 @@ console.log("Hello, World!");
     }
   }, [viewingFile, isTeacher, selectedStudentId, targetUserId, userId, classroomId, currentPath, loadFiles]);
 
-  // Enhanced keyboard shortcuts with Alt keys (to avoid browser conflicts)
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Alt+S to save (avoids browser default)
       if (event.altKey && (event.key === 's' || event.key === 'S')) {
         event.preventDefault();
         event.stopPropagation();
@@ -417,7 +413,6 @@ console.log("Hello, World!");
         return false;
       }
       
-      // Alt+N to create new file
       if (event.altKey && (event.key === 'n' || event.key === 'N')) {
         event.preventDefault();
         event.stopPropagation();
@@ -425,7 +420,6 @@ console.log("Hello, World!");
         return false;
       }
       
-      // Escape to close modal/viewer
       if (event.key === 'Escape') {
         event.preventDefault();
         let handled = false;
@@ -461,7 +455,6 @@ console.log("Hello, World!");
     if (file.type === 'directory') {
       await loadFiles(file.path);
     } else {
-      // Load file content
       try {
         const effectiveUserId = isTeacher ? selectedStudentId : (targetUserId || userId);
         const params = new URLSearchParams();
@@ -471,14 +464,12 @@ console.log("Hello, World!");
         if (classroomId) params.append('classroomId', classroomId);
         if (isTeacher) params.append('isTeacher', 'true');
         
-        console.log('Loading file:', file.path, 'with params:', params.toString());
         const response = await fetch(`/api/files/content?${params}`);
         const data = await response.json();
         
         if (data.success) {
           const content = data.content || '';
           
-          // If file is empty, offer to add starter content
           if (content.trim() === '' && file.size === 0) {
             const shouldAddStarter = window.confirm(
               `The file "${file.name}" is empty. Would you like to add starter code?`
@@ -486,7 +477,6 @@ console.log("Hello, World!");
             
             if (shouldAddStarter) {
               const starterContent = getStarterContent(file.name);
-              // Save starter content to file
               try {
                 const saveParams = new URLSearchParams();
                 if (effectiveUserId) saveParams.append('userId', effectiveUserId);
@@ -510,7 +500,6 @@ console.log("Hello, World!");
                   name: file.name
                 });
                 onFileSelect(file.path, starterContent);
-                // Refresh file list to update size
                 loadFiles(currentPath);
               } catch (error) {
                 console.error('Error saving starter content:', error);
@@ -570,9 +559,7 @@ console.log("Hello, World!");
       });
       
       if (response.ok) {
-        // Refresh file list to update size
         await loadFiles(currentPath);
-        // Load the file with starter content
         setViewingFile({
           path: file.path,
           content: starterContent,
@@ -595,10 +582,12 @@ console.log("Hello, World!");
     }
   };
 
-  const handleCloseViewer = () => {
+  const handleCloseViewer = useCallback(() => {
+    if (!isMountedRef.current) return;
     setShowFileViewer(false);
     setViewingFile(null);
-  };
+    setIsModified(false);
+  }, []);
 
   const handleCreateFile = async () => {
     if (!newName.trim()) return;
@@ -606,7 +595,6 @@ console.log("Hello, World!");
     try {
       const effectiveUserId = isTeacher ? selectedStudentId : (targetUserId || userId);
       
-      // Construct the full path for the new file/directory
       const filePath = currentPath === '/' ? newName : `${currentPath}/${newName}`;
       
       const requestBody = {
@@ -729,7 +717,6 @@ console.log("Hello, World!");
           <Folder className="w-5 h-5 text-purple-500" />
           <span className="font-medium text-zinc-800 dark:text-zinc-200">Files</span>
           
-          {/* Keyboard Shortcuts Help */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
@@ -845,7 +832,6 @@ console.log("Hello, World!");
             ) : null
           )}
           
-          {/* Code Examples Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="default" className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600">
@@ -920,7 +906,7 @@ console.log("Hello, World!");
               onClick={() => loadFiles('/')}
               className="px-3 py-1.5 text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 bg-white dark:bg-zinc-800 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-all duration-200 shadow-sm hover:shadow-md"
             >
-              🏠 Home
+              Home
             </button>
             {currentPath !== '/' && (
               <>
@@ -942,7 +928,6 @@ console.log("Hello, World!");
             )}
           </div>
           
-          {/* Save Status Indicator */}
           {viewingFile && (
             <div className="flex items-center space-x-2">
               {saveStatus === 'saving' && (
@@ -953,12 +938,12 @@ console.log("Hello, World!");
               )}
               {saveStatus === 'saved' && (
                 <div className="flex items-center space-x-2 text-green-600 dark:text-green-400">
-                  <span className="text-xs">✅ Saved</span>
+                  <span className="text-xs">Saved</span>
                 </div>
               )}
               {saveStatus === 'error' && (
                 <div className="flex items-center space-x-2 text-red-600 dark:text-red-400">
-                  <span className="text-xs">❌ Error saving</span>
+                  <span className="text-xs">Error saving</span>
                 </div>
               )}
               <Button onClick={saveCurrentFile} variant="outline" size="sm" disabled={saveStatus === 'saving'}>
@@ -971,7 +956,6 @@ console.log("Hello, World!");
         </div>
       </div>
 
-      {/* File list */}
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
           <div className="flex items-center justify-center p-8">
@@ -979,7 +963,6 @@ console.log("Hello, World!");
             <span className="ml-2 text-zinc-600 dark:text-zinc-400">Loading files...</span>
           </div>
         ) : !selectedStudentId ? (
-          // Show this when no valid user ID is available
           <div className="text-center p-8 text-zinc-500 dark:text-zinc-400">
             <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
             <p className="font-medium">No user selected</p>
@@ -994,11 +977,9 @@ console.log("Hello, World!");
         ) : (
           <div className="divide-y divide-zinc-100 dark:divide-zinc-700">
             {files.map((file, index) => {
-              // Fix file extension display by properly parsing the extension
               const fileExtension = file.name.includes('.') ? file.name.split('.').pop()?.toLowerCase() : '';
               const fileName = file.name;
               
-              // Determine file icon based on extension
               const getFileIcon = () => {
                 if (file.type === 'directory') return <Folder className="w-5 h-5 text-purple-500 flex-shrink-0" />;
                 
@@ -1013,7 +994,6 @@ console.log("Hello, World!");
                 }
               };
               
-              // Fix file size display
               const getFileSizeDisplay = () => {
                 if (file.type === 'directory') return null;
                 if (file.size === undefined || file.size === null) return 'Unknown size';
@@ -1021,7 +1001,6 @@ console.log("Hello, World!");
                 return file.size < 1024 ? `${file.size} B` : `${(file.size / 1024).toFixed(1)} KB`;
               };
               
-              // Check if file has invalid extension (like .py0)
               const hasInvalidExtension = fileName.match(/\.(py|js|html|css|md|json)0$/i);
               
               return (
@@ -1101,7 +1080,6 @@ console.log("Hello, World!");
         )}
       </div>
 
-      {/* Create file modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 w-96 shadow-2xl">
@@ -1170,7 +1148,6 @@ console.log("Hello, World!");
                             size="sm"
                             onClick={() => {
                               const content = expandEmmet(abbr);
-                              // Create file with Emmet expansion
                               const effectiveUserId = isTeacher ? selectedStudentId : (targetUserId || userId);
                               const filePath = currentPath === '/' ? newName : `${currentPath}/${newName}`;
                               
@@ -1192,7 +1169,6 @@ console.log("Hello, World!");
                                   await loadFiles(currentPath);
                                   setShowCreateModal(false);
                                   setNewName('');
-                                  // Open the file with the expansion
                                   onFileSelect(filePath, content);
                                 }
                               });
@@ -1241,11 +1217,9 @@ console.log("Hello, World!");
         </div>
       )}
 
-      {/* File Viewer Modal */}
       {showFileViewer && viewingFile && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-zinc-800 rounded-xl w-4/5 h-4/5 shadow-2xl flex flex-col">
-            {/* Viewer Header */}
             <div className="flex items-center justify-between p-4 border-b border-zinc-200 dark:border-zinc-700">
               <div className="flex items-center space-x-3">
                 <div className="p-2 bg-zinc-100 dark:bg-zinc-700 rounded-lg">
@@ -1263,7 +1237,6 @@ console.log("Hello, World!");
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-zinc-800 dark:text-zinc-200 flex items-center">
-                    {/* Show fixed name without trailing 0 */}
                     {viewingFile.name.match(/\.(py|js|html|css|md|json)0$/i) ? 
                       viewingFile.name.slice(0, -1) : 
                       viewingFile.name}
@@ -1276,7 +1249,6 @@ console.log("Hello, World!");
               </div>
               
               <div className="flex items-center space-x-2">
-                {/* Load to Editor Button */}
                 {onFileLoad && (
                   <Button
                     onClick={handleLoadCodeToEditor}
@@ -1287,7 +1259,6 @@ console.log("Hello, World!");
                   </Button>
                 )}
                 
-                {/* Save Button */}
                 <Button
                   onClick={saveCurrentFile}
                   variant="outline"
@@ -1309,7 +1280,6 @@ console.log("Hello, World!");
               </div>
             </div>
             
-            {/* Viewer Content */}
             <div className="flex-1 overflow-hidden">
               {viewingFile.content !== undefined ? (
                 <div className="h-full border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
@@ -1318,13 +1288,12 @@ console.log("Hello, World!");
                     language={getLanguageFromExtension(viewingFile.name)}
                     value={viewingFile.content}
                     onChange={(value) => {
-                      if (viewingFile && value !== undefined) {
-                        setViewingFile(prev => prev ? {
-                          ...prev,
-                          content: value
-                        } : null);
-                        setIsModified(true);
-                      }
+                      if (!isMountedRef.current || !viewingFile || value === undefined) return;
+                      setViewingFile(prev => prev ? {
+                        ...prev,
+                        content: value
+                      } : null);
+                      setIsModified(true);
                     }}
                     theme={theme === 'dark' ? 'vs-dark' : 'light'}
                     options={{
@@ -1341,6 +1310,14 @@ console.log("Hello, World!");
                       renderWhitespace: 'selection',
                       fontSize: 14,
                       fontFamily: 'JetBrains Mono, Fira Code, Monaco, Consolas, monospace',
+                      // Prevent cancellation errors
+                      automaticLayout: true,
+                      contextmenu: false,
+                      quickSuggestions: false,
+                      parameterHints: { enabled: false },
+                      suggestOnTriggerCharacters: false,
+                      acceptSuggestionOnEnter: 'off',
+                      hover: { enabled: false },
                     }}
                   />
                 </div>
