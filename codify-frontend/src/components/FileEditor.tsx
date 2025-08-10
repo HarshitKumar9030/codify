@@ -512,10 +512,8 @@ License information.
           isModified: false
         });
       } else {
-        // Silent error handling
       }
     } catch {
-      // Silent error handling
     }
   };
 
@@ -653,7 +651,6 @@ License information.
   };
 
   useEffect(() => {
-    // Always attempt an initial load; server will infer user from session if no userId is provided
     loadFiles('/');
   }, [loadFiles, selectedStudentId, isTeacher, userId, classroomId]);
 
