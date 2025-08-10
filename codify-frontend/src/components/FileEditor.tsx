@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -70,7 +71,9 @@ export default function FileEditor({
   const [showSuccessMessage, setShowSuccessMessage] = useState<{show: boolean, message: string}>({show: false, message: ''});
   const [showErrorMessage, setShowErrorMessage] = useState<{show: boolean, message: string}>({show: false, message: ''});
 
-  // Helper functions for custom dialogs
+  const latestRequestIdRef = useRef(0);
+  const listAbortRef = useRef<AbortController | null>(null);
+
   const showSuccess = useCallback((message: string) => {
     setShowSuccessMessage({show: true, message});
     setTimeout(() => setShowSuccessMessage({show: false, message: ''}), 3000);
@@ -421,19 +424,16 @@ License information.
         .then(res => res.json())
         .then(data => {
           if (data.success) {
-            const studentsList = [
+            setStudents([
               { id: userId || '', name: 'My Files' },
               ...data.students.map((s: {id: string, name: string}) => ({ id: s.id, name: s.name }))
-            ];
-            setStudents(studentsList);
+            ]);
             setSelectedStudentId(userId || '');
           }
         })
-        .catch((error) => {
-          console.error('Error loading students:', error);
+        .catch(() => {
+          // Silent error handling
         });
-    } else if (!isTeacher && userId) {
-      setSelectedStudentId(userId);
     }
   }, [isTeacher, classroomId, userId]);
 
@@ -441,36 +441,44 @@ License information.
     setLoading(true);
     try {
       const effectiveUserId = isTeacher ? selectedStudentId : (targetUserId || userId);
-      
+
       if (!effectiveUserId) {
-        console.log('❌ No user ID available for file listing in FileEditor');
         setLoading(false);
         return;
       }
-      
+
+      listAbortRef.current?.abort();
+      const controller = new AbortController();
+      listAbortRef.current = controller;
+      const myRequestId = ++latestRequestIdRef.current;
+
       const params = new URLSearchParams();
       params.append('path', path);
       params.append('userId', effectiveUserId);
       if (userId) params.append('requestingUserId', userId);
       params.append('isTeacher', isTeacher.toString());
       if (classroomId) params.append('classroomId', classroomId);
-      
-      console.log('📁 FileEditor loading files with params:', params.toString());
-      const response = await fetch(`/api/files?${params}`);
+
+      const response = await fetch(`/api/files?${params}`, { signal: controller.signal });
       const data = await response.json();
-      
-      console.log('📁 FileEditor API response:', data);
-      
+
+      if (myRequestId !== latestRequestIdRef.current) return;
+
       if (data.success) {
-        setFiles(data.files || []);
+        const sorted: FileItem[] = [...(data.files || [])].sort((a: FileItem, b: FileItem) => {
+          if (a.type !== b.type) return a.type === 'directory' ? -1 : 1; // folders first
+          return a.name.localeCompare(b.name);
+        });
+        setFiles(sorted);
         setCurrentPath(path);
       } else {
-        console.error('Failed to load files in FileEditor:', data.message);
         setFiles([]);
       }
-    } catch (error) {
-      console.error('Error loading files in FileEditor:', error);
-      setFiles([]);
+    } catch (err: unknown) {
+      const e = err as { name?: string } | undefined;
+      if (e?.name !== 'AbortError') {
+        setFiles([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -486,12 +494,10 @@ License information.
       const effectiveUserId = isTeacher ? selectedStudentId : (targetUserId || userId);
       
       if (!effectiveUserId) {
-        console.log('No user ID available for file content loading');
         return;
       }
 
       if (!file.path || file.path === '/content' || file.name === 'content') {
-        console.log('Invalid file path:', file.path);
         return;
       }
       
@@ -505,7 +511,6 @@ License information.
       const response = await fetch(`/api/files/content?${params}`);
       const data = await response.json();
       
-      
       if (data.success) {
         const language = getLanguageFromExtension(file.name);
         setEditingFile({
@@ -516,10 +521,10 @@ License information.
           isModified: false
         });
       } else {
-        console.error('Failed to load file content:', data.message);
+        // Silent error handling
       }
-    } catch (error) {
-      console.error('Error loading file content:', error);
+    } catch {
+      // Silent error handling
     }
   };
 
@@ -657,13 +662,8 @@ License information.
   };
 
   useEffect(() => {
-    console.log('FileEditor effect triggered - selectedStudentId:', selectedStudentId, 'isTeacher:', isTeacher, 'userId:', userId);
     if (selectedStudentId || (!isTeacher && userId)) {
-      const effectiveId = selectedStudentId || userId;
-      console.log(' Loading files for effective user ID:', effectiveId);
       loadFiles('/');
-    } else {
-      console.log('No valid user ID to load files');
     }
   }, [selectedStudentId, loadFiles, isTeacher, userId]);
 
@@ -959,9 +959,9 @@ License information.
               {files.length === 0 ? (
                 <p className="text-center text-zinc-500 py-8 text-sm">No files in this directory</p>
               ) : (
-                files.map((file, index) => (
+        files.map((file) => (
                   <div
-                    key={index}
+          key={file.path || `${file.name}:${file.modified}`}
                     className="flex items-center justify-between p-2 sm:p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded"
                   >
                     <div
