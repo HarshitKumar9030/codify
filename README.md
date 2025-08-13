@@ -1,232 +1,217 @@
-# CodiFY Monorepo
+# CodiFY
 
-Teach, practice, and run code live in the browser. CodiFY p# PYTHON_BIN=/usr/bin/python3
-```App: http://lFiles are stored pe- WebSocket: same origin as - `npm test` - run test  - Verify `DATABA- PreferPRs welcome! Keep changes focused and include a brief description. If you're unsure, open an issue first and we'll figure it out together.
+A simple, fast platform for coding assignments that runs directly in the browser. Create, execute, and review JavaScript and Python code with instant feedback.
 
-## Licensenaged MongoDB (e.g., Atlas)
+## Features
 
-## ContributingL`
+- Browser-based code editor with syntax highlighting
+- Real-time code execution for JavaScript and Python
+- File management system with folders and downloads
+- User authentication and isolated workspaces
+- WebSocket streaming for live output
+- Cross-platform development support
 
-## Deploying (sketch)en available)
+## Architecture
 
-## Troubleshootingnd
+- **Frontend**: Next.js 15 with React 19, Tailwind CSS, NextAuth, and Prisma
+- **Backend**: Express server with WebSocket support for code execution
+- **Database**: MongoDB for user data and session management
+- **Security**: Sandboxed execution environment with rate limiting
 
-## Useful scripts
+## Getting Started
 
-From `codify-frontend`
-- `pnpm dev` - start Next.js
-- `pnpm build` - production build
-- `pnpm start` - run the built app
-- `pnpm lint` - lint the codebase
+### Prerequisites
 
-From `codify-execution-server`
-- `npm run dev` - dev server (nodemon)
-- `npm start` - start in production
-- `npm test` - run tests (when available) execution server's `user-files/` directory.
+- Node.js 18 or higher
+- MongoDB (local installation or Atlas cloud)
+- Python 3.11+ (optional, for Python code execution)
 
-## How the pieces talk
+### Installation
 
-- Frontend to Execution Server (HTTP): file APIs, health checks
-- Frontend to Execution Server (WebSocket): live execution streams
-- Execution Server resolves Python automatically (`PYTHON_BIN` then `python` then `python3`) and runs in unbuffered mode for snappy output.3000
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/HarshitKumar9030/codify.git
+   cd codify
+   ```
 
-## What works out of the box Quick start (dev) modern Next.js app with a lightweight execution server that safely runs JavaScript and Python.
+2. **Set up the execution server**
+   ```powershell
+   cd codify-execution-server
+   npm install
+   ```
 
-- Frontend: `codify-frontend` (Next.js 15, React 19, Tailwind, NextAuth, Prisma/MongoDB)
-- Execution Server: `codify-execution-server` (Express, WebSocket, sandboxed execution)
+3. **Set up the frontend**
+   ```powershell
+   cd ../codify-frontend
+   npm install
+   npx prisma generate
+   ```
 
-## What you'll needonorepo
+### Configuration
 
-Teach, practice, and run code live in the browser. CodiFY pairs a modern Next.js app with a lightweight execution server that safely runs JavaScript and Python.
+Create environment files for each component:
 
-- Frontend: `codify-frontend` (Next.js 15, React 19, Tailwind, NextAuth, Prisma/MongoDB)
-- Execution Server: `codify-execution-server` (Express, WebSocket, sandboxed execution)
-
----
-
-## 🧰 What you’ll need
-
-- Node.js 18+ (LTS recommended)
-- pnpm (for the frontend workspace) and npm (for the execution server)
-- MongoDB (local or Atlas)
-- Optional: Python 3.11+ on the execution server for Python execution
-
-## Repo at a glance
-
-```
-codify/
-├─ codify-frontend/           # Next.js app (App Router)
-│  ├─ prisma/schema.prisma    # MongoDB models
-│  └─ src/...                 # App, components, API routes
-├─ codify-execution-server/   # Express-based execution server
-│  └─ src/...                 # Routes, services, middleware
-└─ README.md                  # You are here
-```
-
-## Configure environments
-
-Create a separate env file for each package. Don’t commit secrets.
-
-### Frontend (`codify-frontend/.env.local`)
-
-- `DATABASE_URL` - MongoDB connection string
-- `NEXTAUTH_SECRET` - A strong random string
-- `NEXTAUTH_URL` - `http://localhost:3000` (or your deployed URL)
-- `EXECUTION_SERVER_URL` - `http://localhost:8080` (or your backend URL)
-- `NEXT_PUBLIC_WS_SERVER_URL` - `ws://localhost:8080` (use `wss://...` in production)
-
-Example
-```
+**Frontend** (`codify-frontend/.env.local`):
+```env
 DATABASE_URL="mongodb://localhost:27017/codify"
-NEXTAUTH_SECRET="replace-with-a-secure-random-string"
+NEXTAUTH_SECRET="your-secret-key-here"
 NEXTAUTH_URL="http://localhost:3000"
 EXECUTION_SERVER_URL="http://localhost:8080"
 NEXT_PUBLIC_WS_SERVER_URL="ws://localhost:8080"
 ```
 
-### Execution Server (`codify-execution-server/.env`)
-
-- `PORT` - 8080
-- `HOST` - 0.0.0.0
-- `FRONTEND_URL` - `http://localhost:3000` (CORS allow-list)
-- `FRONTEND_API_URL` - `http://localhost:3000` (server-to-frontend calls for classroom access checks)
-- `MAX_CONCURRENT_EXECUTIONS` - default: 10
-- `EXECUTION_TIMEOUT_MAX` - default: 30 (seconds)
-- `CODE_SIZE_LIMIT` - default: 51200 (bytes)
-- `RATE_LIMIT_POINTS` - default: 50
-- `RATE_LIMIT_DURATION` - default: 60 (seconds)
-- `PYTHON_BIN` - optional; full path to Python (e.g., `/usr/bin/python3`)
-
-Example
-```
+**Execution Server** (`codify-execution-server/.env`):
+```env
 PORT=8080
 HOST=0.0.0.0
 FRONTEND_URL=http://localhost:3000
-FRONTEND_API_URL=http://localhost:3000
 MAX_CONCURRENT_EXECUTIONS=10
 EXECUTION_TIMEOUT_MAX=30
 CODE_SIZE_LIMIT=51200
 RATE_LIMIT_POINTS=50
 RATE_LIMIT_DURATION=60
-# PYTHON_BIN=/usr/bin/python3
 ```
 
----
+### Running the Application
 
-## Quick start (dev)
+Start both services in separate terminals:
 
-Open two terminals and run backend and frontend side-by-side.
-
-### 1) Execution Server
-
-PowerShell (Windows)
+**Terminal 1 - Execution Server:**
 ```powershell
-cd .\codify-execution-server
-npm install
+cd codify-execution-server
 npm run dev
 ```
-Server: http://localhost:8080 (WebSocket at ws://localhost:8080)
 
-Tip: If Python code doesn’t run, set `PYTHON_BIN` to your Python path and restart.
-
-### 2) Frontend
-
-PowerShell (Windows)
+**Terminal 2 - Frontend:**
 ```powershell
-cd .\codify-frontend
-pnpm install
-pnpm prisma generate
-# Optional (be careful in production):
-# pnpm prisma db push
-pnpm dev
+cd codify-frontend
+npm run dev
 ```
-App: http://localhost:3000
 
----
+The application will be available at:
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8080
 
-## What works out of the box
+## Usage
 
-- Sign in and basic app navigation
-- File Manager (create folders/files, view/edit, download)
-- Live code execution over WebSocket
-  - JavaScript (Node.js)
-  - Python (when Python is installed on the server)
+1. Open your browser and navigate to http://localhost:3000
+2. Sign in using the authentication system
+3. Create files and folders in the file manager
+4. Write JavaScript or Python code in the editor
+5. Execute code and see real-time output
+6. Download or share your work
 
-Files are stored per-user under the execution server’s `user-files/` directory.
+## API Endpoints
 
----
+The execution server provides these main endpoints:
 
-##  How the pieces talk
+- `GET /api/health` - Server health check
+- `GET /api/files` - List user files
+- `POST /api/files` - Create new files
+- `GET /api/files/content` - Get file content
+- `POST /api/execute` - Execute code
+- WebSocket connection for live execution streaming
 
-- Frontend ➜ Execution Server (HTTP): file APIs, health checks
-- Frontend ➜ Execution Server (WebSocket): live execution streams
-- Execution Server resolves Python automatically (`PYTHON_BIN` → `python` → `python3`) and runs in unbuffered mode for snappy output.
+## Development
 
-Key endpoints (backend base: `http://localhost:8080`)
-- `GET /api/health`, `/api/health/detailed`, `/api/health/ready`
-- `GET /api/files`, `POST /api/files`, `GET /api/files/content`, `GET /api/files/download`
-- WebSocket: same origin as backend
+### Project Structure
 
----
+```
+codify/
+├── codify-frontend/          # Next.js application
+│   ├── src/app/             # App router pages
+│   ├── src/components/      # React components
+│   ├── src/lib/            # Utility libraries
+│   └── prisma/             # Database schema
+├── codify-execution-server/ # Express backend
+│   ├── src/routes/         # API routes
+│   ├── src/services/       # Business logic
+│   └── src/middleware/     # Express middleware
+└── README.md               # This file
+```
 
-## Useful scripts
+### Available Scripts
 
-From `codify-frontend`
-- `pnpm dev` — start Next.js
-- `pnpm build` — production build
-- `pnpm start` — run the built app
-- `pnpm lint` — lint the codebase
+**Frontend:**
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Run code linting
 
-From `codify-execution-server`
-- `npm run dev` — dev server (nodemon)
-- `npm start` — start in production
-- `npm test` — run tests (when available)
-
----
+**Backend:**
+- `npm run dev` - Start with nodemon
+- `npm start` - Start production server
+- `npm test` - Run test suite
 
 ## Troubleshooting
 
-- “File Manager shows empty”
-  - Make sure the request includes your user ID (handled automatically when signed in)
-  - Try creating a file/folder; the server seeds a welcome set for new users
-  - Confirm `EXECUTION_SERVER_URL` points to the running backend
+**File Manager appears empty:**
+- Ensure you're signed in with a valid user session
+- Check that EXECUTION_SERVER_URL is correctly set
+- Verify the backend server is running on port 8080
 
-- WebSocket can’t connect
-  - Set `NEXT_PUBLIC_WS_SERVER_URL` to `ws://localhost:8080` (or your `wss://` URL in prod)
-  - Check your browser console for connection errors
+**WebSocket connection fails:**
+- Confirm NEXT_PUBLIC_WS_SERVER_URL matches your backend
+- Check browser console for connection errors
+- Ensure no firewall is blocking the WebSocket port
 
-- Python code doesn’t run
-  - Install Python on the server and set `PYTHON_BIN` to its path
-  - Restart the execution server after changing envs
+**Python code doesn't execute:**
+- Install Python 3.11+ on the server machine
+- Set PYTHON_BIN environment variable if needed
+- Restart the execution server after Python installation
 
-- Prisma errors
-  - Run `pnpm prisma generate` inside `codify-frontend`
-  - Verify `DATABASE_URL`
+**Database connection issues:**
+- Verify MongoDB is running and accessible
+- Check DATABASE_URL format and credentials
+- For MongoDB Atlas, ensure IP whitelist includes your address
 
----
+## Deployment
 
-## Deploying (sketch)
+### Production Setup
 
-Frontend
-- Set `NEXTAUTH_URL` to your public URL and a strong `NEXTAUTH_SECRET`
-- Build with `pnpm build`; run with `pnpm start` or deploy to Vercel
+1. **Frontend Deployment:**
+   - Set production environment variables
+   - Build the application: `npm run build`
+   - Deploy to platforms like Vercel, Netlify, or your server
 
-Execution Server
-- `NODE_ENV=production`, set `FRONTEND_URL` to your frontend origin (for CORS)
-- Put it behind a reverse proxy (nginx/Caddy); enable HTTPS
-- Consider a process manager like PM2
+2. **Backend Deployment:**
+   - Use a process manager like PM2
+   - Configure reverse proxy (nginx recommended)
+   - Enable HTTPS with SSL certificates
+   - Set NODE_ENV=production
 
-Database
-- Prefer a managed MongoDB (e.g., Atlas)
+3. **Database:**
+   - Use MongoDB Atlas for managed hosting
+   - Configure proper backup and monitoring
 
----
+### Security Considerations
+
+- Use strong, unique values for NEXTAUTH_SECRET
+- Enable HTTPS in production
+- Configure CORS properly with FRONTEND_URL
+- Set appropriate rate limits for your use case
+- Regularly update dependencies
 
 ## Contributing
 
-PRs welcome! Keep changes focused and include a brief description. If you’re unsure, open an issue first and we’ll figure it out together.
+We welcome contributions! Here's how to get started:
 
----
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature-name`
+3. Make your changes and test thoroughly
+4. Submit a pull request with a clear description
+
+Please ensure your code follows the existing style and includes appropriate tests.
 
 ## License
 
-This repo hosts multiple packages. Check individual folders or file headers for license details.
+This project is open source. See individual package directories for specific license information.
+
+## Support
+
+If you encounter issues:
+1. Check the troubleshooting section above
+2. Search existing GitHub issues
+3. Create a new issue with detailed reproduction steps
+4. Include relevant logs and environment information
+s
