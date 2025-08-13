@@ -4,16 +4,16 @@ A simple, fast platform for coding assignments that runs directly in the browser
 
 ## Features
 
-- Browser-based code editor with syntax highlighting
-- Real-time code execution for JavaScript and Python
+- Browser based code editor with syntax highlighting
+- Real time code execution for javascript and python
 - File management system with folders and downloads
 - User authentication and isolated workspaces
-- WebSocket streaming for live output
-- Cross-platform development support
+- Websocket streaming for live output
+- Cross platform development support
 
 ## Architecture
 
-- **Frontend**: Next.js 15 with React 19, Tailwind CSS, NextAuth, and Prisma
+- **Frontend**: Next.js 15 with React 19, Tailwind CSS, Nextauth, and Prisma
 - **Backend**: Express server with WebSocket support for code execution
 - **Database**: MongoDB for user data and session management
 - **Security**: Sandboxed execution environment with rate limiting
@@ -187,7 +187,7 @@ Use strong, unique values for NEXTAUTH_SECRET, enable HTTPS in production, confi
 We welcome contributions! Here's how to get started:
 
 1. Fork the repository
-2. Create a feature branch with `git checkout -b feature-name`
+2. Create a feature branch with `git checkout -b featureName`
 3. Make your changes and test thoroughly
 4. Submit a pull request with a clear description
 
