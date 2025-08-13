@@ -88,9 +88,9 @@ cd codify-frontend
 npm run dev
 ```
 
-The application will be available at:
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8080
+The application will be available at these addresses:
+- Frontend at http://localhost:3000
+- Backend API at http://localhost:8080
 
 ## Usage
 
@@ -105,11 +105,11 @@ The application will be available at:
 
 The execution server provides these main endpoints:
 
-- `GET /api/health` - Server health check
-- `GET /api/files` - List user files
-- `POST /api/files` - Create new files
-- `GET /api/files/content` - Get file content
-- `POST /api/execute` - Execute code
+- `GET /api/health` for server health check
+- `GET /api/files` to list user files
+- `POST /api/files` to create new files
+- `GET /api/files/content` to get file content
+- `POST /api/execute` to execute code
 - WebSocket connection for live execution streaming
 
 ## Development
@@ -133,15 +133,15 @@ codify/
 ### Available Scripts
 
 **Frontend:**
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run lint` - Run code linting
+- `npm run dev` to start development server
+- `npm run build` to build for production
+- `npm run start` to start production server
+- `npm run lint` to run code linting
 
 **Backend:**
-- `npm run dev` - Start with nodemon
-- `npm start` - Start production server
-- `npm test` - Run test suite
+- `npm run dev` to start with nodemon
+- `npm start` to start production server
+- `npm test` to run test suite
 
 ## Troubleshooting
 
@@ -170,34 +170,24 @@ codify/
 ### Production Setup
 
 1. **Frontend Deployment:**
-   - Set production environment variables
-   - Build the application: `npm run build`
-   - Deploy to platforms like Vercel, Netlify, or your server
+   Set production environment variables, then build the application with `npm run build` and deploy to platforms like Vercel, Netlify, or your server
 
 2. **Backend Deployment:**
-   - Use a process manager like PM2
-   - Configure reverse proxy (nginx recommended)
-   - Enable HTTPS with SSL certificates
-   - Set NODE_ENV=production
+   Use a process manager like PM2, configure reverse proxy (nginx recommended), enable HTTPS with SSL certificates, and set NODE_ENV=production
 
 3. **Database:**
-   - Use MongoDB Atlas for managed hosting
-   - Configure proper backup and monitoring
+   Use MongoDB Atlas for managed hosting and configure proper backup and monitoring
 
 ### Security Considerations
 
-- Use strong, unique values for NEXTAUTH_SECRET
-- Enable HTTPS in production
-- Configure CORS properly with FRONTEND_URL
-- Set appropriate rate limits for your use case
-- Regularly update dependencies
+Use strong, unique values for NEXTAUTH_SECRET, enable HTTPS in production, configure CORS properly with FRONTEND_URL, set appropriate rate limits for your use case, and regularly update dependencies.
 
 ## Contributing
 
 We welcome contributions! Here's how to get started:
 
 1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
+2. Create a feature branch with `git checkout -b feature-name`
 3. Make your changes and test thoroughly
 4. Submit a pull request with a clear description
 
@@ -214,4 +204,3 @@ If you encounter issues:
 2. Search existing GitHub issues
 3. Create a new issue with detailed reproduction steps
 4. Include relevant logs and environment information
-s
