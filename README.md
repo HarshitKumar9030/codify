@@ -7,7 +7,7 @@ Teach, practice, and run code live in the browser. CodiFY pairs a modern Next.js
 
 ---
 
-## 🧰 What you’ll need
+## What you’ll need
 
 - Node.js 18+ (LTS recommended)
 - pnpm (for the frontend workspace) and npm (for the execution server)
@@ -16,7 +16,7 @@ Teach, practice, and run code live in the browser. CodiFY pairs a modern Next.js
 
 ---
 
-## 🗂️ Repo at a glance
+## Repo at a glance
 
 ```
 codify/
@@ -30,7 +30,7 @@ codify/
 
 ---
 
-## ⚙️ Configure environments
+## Configure environments
 
 Create a separate env file for each package. Don’t commit secrets.
 
