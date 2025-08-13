@@ -112,23 +112,7 @@ The execution server provides these main endpoints:
 - `POST /api/execute` to execute code
 - WebSocket connection for live execution streaming
 
-## Development
 
-### Project Structure
-
-```
-codify/
-├── codify-frontend/          # Next.js application
-│   ├── src/app/             # App router pages
-│   ├── src/components/      # React components
-│   ├── src/lib/            # Utility libraries
-│   └── prisma/             # Database schema
-├── codify-execution-server/ # Express backend
-│   ├── src/routes/         # API routes
-│   ├── src/services/       # Business logic
-│   └── src/middleware/     # Express middleware
-└── README.md               # This file
-```
 
 ### Available Scripts
 
@@ -143,28 +127,6 @@ codify/
 - `npm start` to start production server
 - `npm test` to run test suite
 
-## Troubleshooting
-
-**File Manager appears empty:**
-- Ensure you're signed in with a valid user session
-- Check that EXECUTION_SERVER_URL is correctly set
-- Verify the backend server is running on port 8080
-
-**WebSocket connection fails:**
-- Confirm NEXT_PUBLIC_WS_SERVER_URL matches your backend
-- Check browser console for connection errors
-- Ensure no firewall is blocking the WebSocket port
-
-**Python code doesn't execute:**
-- Install Python 3.11+ on the server machine
-- Set PYTHON_BIN environment variable if needed
-- Restart the execution server after Python installation
-
-**Database connection issues:**
-- Verify MongoDB is running and accessible
-- Check DATABASE_URL format and credentials
-- For MongoDB Atlas, ensure IP whitelist includes your address
-
 ## Deployment
 
 ### Production Setup
@@ -177,30 +139,3 @@ codify/
 
 3. **Database:**
    Use MongoDB Atlas for managed hosting and configure proper backup and monitoring
-
-### Security Considerations
-
-Use strong, unique values for NEXTAUTH_SECRET, enable HTTPS in production, configure CORS properly with FRONTEND_URL, set appropriate rate limits for your use case, and regularly update dependencies.
-
-## Contributing
-
-We welcome contributions! Here's how to get started:
-
-1. Fork the repository
-2. Create a feature branch with `git checkout -b featureName`
-3. Make your changes and test thoroughly
-4. Submit a pull request with a clear description
-
-Please ensure your code follows the existing style and includes appropriate tests.
-
-## License
-
-This project is open source. See individual package directories for specific license information.
-
-## Support
-
-If you encounter issues:
-1. Check the troubleshooting section above
-2. Search existing GitHub issues
-3. Create a new issue with detailed reproduction steps
-4. Include relevant logs and environment information
