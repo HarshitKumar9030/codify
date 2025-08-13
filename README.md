@@ -1,5 +1,7 @@
 # CodiFY
 
+<img src="https://za4z2v0m6u.ufs.sh/f/iw9mNoYDP03qXkmQlg9myL2PDC9iYM0xEHRpIQ1VqgfOdX7o">
+
 A simple, fast platform for coding assignments that runs directly in the browser. Create, execute, and review Javascript and Python code with instant feedback.
 
 ## Features
