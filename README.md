@@ -30,13 +30,13 @@ A simple, fast platform for coding assignments that runs directly in the browser
 
 ### Installation
 
-1. **Clone the repository**
+1. **Clone the repo**
    ```bash
    git clone https://github.com/HarshitKumar9030/codify.git
    cd codify
    ```
 
-2. **Set up the execution server**
+2. **Set up the exec server**
    ```powershell
    cd codify-execution-server
    npm install
@@ -49,9 +49,9 @@ A simple, fast platform for coding assignments that runs directly in the browser
    npx prisma generate
    ```
 
-### Configuration
+### Config
 
-Create environment files for each component:
+Create env files for both server and frontend:
 
 **Frontend** (`codify-frontend/.env.local`):
 ```env
